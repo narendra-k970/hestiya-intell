@@ -1,0 +1,17 @@
+# Ignore frontend dependencies and cache
+client/node_modules/
+client/.cache/
+client/build/
+client/dist/
+
+# Ignore backend dependencies
+server/node_modules/
+
+# Ignore environment variables (Very Important for security)
+client/.env
+server/.env
+.env
+
+# Other files
+.DS_Store
+*.log
