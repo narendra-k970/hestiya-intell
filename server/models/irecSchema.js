@@ -23,7 +23,7 @@ const irecSchema = new mongoose.Schema(
       },
     ],
 
-    lastSyncAt: { type: Date, default: Date.now },
+    lastSyncAt: { type: Date, default: null },
   },
   { timestamps: true },
 );

@@ -1,3 +1,4 @@
+/* eslint-disable */
 import React, { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 // Chakra imports
@@ -18,10 +19,10 @@ import {
 } from '@chakra-ui/react';
 // Custom components
 import DefaultAuth from 'layouts/auth/Default';
+import api from '../../../utils/axiosConfig'; // Aapka custom axios instance
 // Assets
 import { MdOutlineRemoveRedEye } from 'react-icons/md';
 import { RiEyeCloseLine } from 'react-icons/ri';
-import axios from 'axios';
 
 function SignUp() {
   // Chakra color mode
@@ -41,7 +42,7 @@ function SignUp() {
   const toast = useToast();
   const navigate = useNavigate();
 
-  // --- Sign Up Function ---
+  // --- Sign Up Function Using api instance ---
   const handleSignUp = async () => {
     // 1. Basic Validation
     if (!name || !email || !password) {
@@ -50,14 +51,15 @@ function SignUp() {
         status: 'warning',
         duration: 3000,
         isClosable: true,
+        position: 'top-right',
       });
       return;
     }
 
     setLoading(true);
     try {
-      // 2. API Call (Variable 'response' removed to avoid TS/Lint error)
-      await axios.post('http://localhost:5000/user/auth/signup', {
+      // 2. API Call using 'api' (Base URL configuration se localhost auto-handle hoga)
+      await api.post('/user/auth/signup', {
         name,
         email,
         password,
@@ -70,6 +72,7 @@ function SignUp() {
         status: 'success',
         duration: 3000,
         isClosable: true,
+        position: 'top-right',
       });
 
       // 4. Redirect to Sign In after 2 seconds
@@ -86,6 +89,7 @@ function SignUp() {
         status: 'error',
         duration: 4000,
         isClosable: true,
+        position: 'top-right',
       });
     } finally {
       setLoading(false);
@@ -227,6 +231,7 @@ function SignUp() {
               Create Account
             </Button>
           </FormControl>
+
           <Flex
             flexDirection="column"
             justifyContent="center"

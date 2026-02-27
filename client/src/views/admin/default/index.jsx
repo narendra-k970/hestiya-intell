@@ -1,171 +1,183 @@
-/*!
-  _   _  ___  ____  ___ ________  _   _   _   _ ___   
- | | | |/ _ \|  _ \|_ _|__  / _ \| \ | | | | | |_ _| 
- | |_| | | | | |_) || |  / / | | |  \| | | | | || | 
- |  _  | |_| |  _ < | | / /| |_| | |\  | | |_| || |
- |_| |_|\___/|_| \_\___/____\___/|_| \_|  \___/|___|
-                                                                                                                                                                                                                                                                                                                                       
-=========================================================
-* Horizon UI - v1.1.0
-=========================================================
-
-* Product Page: https://www.horizon-ui.com/
-* Copyright 2023 Horizon UI (https://www.horizon-ui.com/)
-
-* Designed and Coded by Simmmple
-
-=========================================================
-
-* The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
-
-*/
-
-// Chakra imports
+/* eslint-disable */
+import React, { useEffect, useState } from 'react';
 import {
-  Avatar,
   Box,
-  Flex,
-  FormLabel,
   Icon,
-  Select,
   SimpleGrid,
   useColorModeValue,
-} from "@chakra-ui/react";
-// Assets
-import Usa from "assets/img/dashboards/usa.png";
-// Custom components
-import MiniCalendar from "components/calendar/MiniCalendar";
-import MiniStatistics from "components/card/MiniStatistics";
-import IconBox from "components/icons/IconBox";
-import React from "react";
+  Flex,
+  Spinner,
+  Text,
+} from '@chakra-ui/react';
 import {
-  MdAddTask,
   MdAttachMoney,
-  MdBarChart,
-  MdFileCopy,
-} from "react-icons/md";
-import CheckTable from "views/admin/default/components/CheckTable";
-import ComplexTable from "views/admin/default/components/ComplexTable";
-import DailyTraffic from "views/admin/default/components/DailyTraffic";
-import PieCard from "views/admin/default/components/PieCard";
-import Tasks from "views/admin/default/components/Tasks";
-import TotalSpent from "views/admin/default/components/TotalSpent";
-import WeeklyRevenue from "views/admin/default/components/WeeklyRevenue";
-import {
-  columnsDataCheck,
-  columnsDataComplex,
-} from "views/admin/default/variables/columnsData";
-import tableDataCheck from "views/admin/default/variables/tableDataCheck.json";
-import tableDataComplex from "views/admin/default/variables/tableDataComplex.json";
+  MdPublic,
+  MdAnalytics,
+  MdNotificationsActive,
+} from 'react-icons/md';
+
+// Components
+import MiniStatistics from 'components/card/MiniStatistics';
+import IconBox from 'components/icons/IconBox';
+import TotalSpent from 'views/admin/default/components/TotalSpent';
+import WeeklyRevenue from 'views/admin/default/components/WeeklyRevenue';
+import api from '../../../utils/axiosConfig';
 
 export default function UserReports() {
-  // Chakra Color Mode
-  const brandColor = useColorModeValue("brand.500", "white");
-  const boxBg = useColorModeValue("secondaryGray.300", "whiteAlpha.100");
+  const [stats, setStats] = useState({
+    avgPrice: '0.00',
+    pricingCountries: 0,
+    totalVolume: '0',
+  });
+
+  const [loading, setLoading] = useState(true);
+  const brandColor = useColorModeValue('brand.500', 'white');
+  const boxBg = useColorModeValue('secondaryGray.300', 'whiteAlpha.100');
+  const marqueeBg = useColorModeValue('brand.500', 'navy.700');
+
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        const [irecRes, priceRes] = await Promise.all([
+          api.get('/irec/all-data'),
+          api.get('/pricing/country-avg'),
+        ]);
+
+        const plants = irecRes.data?.data || [];
+        const pricing = priceRes.data?.data || [];
+
+        let totalVol = 0;
+        plants.forEach((plant) => {
+          if (plant.issuances && Array.isArray(plant.issuances)) {
+            plant.issuances.forEach((issue) => {
+              totalVol += parseFloat(issue.issuanceVolume || 0);
+            });
+          }
+        });
+
+        const priceCountrySet = new Set();
+        let totalPriceSum = 0;
+        pricing.forEach((p) => {
+          const countryName = p.country || p.Country;
+          if (countryName) priceCountrySet.add(countryName.trim());
+          totalPriceSum += parseFloat(p.avgPrice || p.Rate || 0);
+        });
+
+        const finalAvgPrice =
+          pricing.length > 0
+            ? (totalPriceSum / pricing.length).toFixed(2)
+            : '0.00';
+
+        setStats({
+          avgPrice: finalAvgPrice,
+          pricingCountries: priceCountrySet.size,
+          totalVolume: Math.round(totalVol).toLocaleString(),
+        });
+      } catch (err) {
+        console.error('Data Fetch Error:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchDashboardData();
+  }, []);
+
+  if (loading)
+    return (
+      <Flex justify="center" align="center" h="100vh">
+        <Spinner size="xl" color="brand.500" />
+      </Flex>
+    );
+
   return (
-    <Box pt={{ base: "130px", md: "80px", xl: "80px" }}>
-      <SimpleGrid
-        columns={{ base: 1, md: 2, lg: 3, "2xl": 6 }}
-        gap='20px'
-        mb='20px'>
+    <Box pt={{ base: '130px', md: '80px', xl: '80px' }}>
+      {/* --- NEW NEWS MARQUEE SECTION --- */}
+      <Box
+        bg={marqueeBg}
+        color="white"
+        py="10px"
+        borderRadius="15px"
+        mb="25px"
+        overflow="hidden"
+        position="relative"
+        display="flex"
+        alignItems="center"
+        boxShadow="0px 4px 12px rgba(0, 0, 0, 0.1)"
+      >
+        <Flex
+          px="20px"
+          alignItems="center"
+          bg={marqueeBg}
+          zIndex="2"
+          position="absolute"
+          left="0"
+          fontWeight="bold"
+        >
+          <Icon as={MdNotificationsActive} mr="10px" />
+          <Text whiteSpace="nowrap">MARKET UPDATES:</Text>
+          <Box h="20px" w="2px" bg="whiteAlpha.400" mx="15px" />
+        </Flex>
+
+        <Box
+          as="marquee"
+          width="100%"
+          style={{ fontSize: '14px', fontWeight: '500' }}
+        >
+          I-REC Prices are stabilizing across Southeast Asia • New Solar
+          Projects registered in Vietnam and Thailand • Global Renewable Energy
+          Demand up by 15% this quarter • Current Average Market Rate: $
+          {stats.avgPrice} • Total Verified Market Volume reached{' '}
+          {stats.totalVolume} MWh • Corporate RE100 targets driving demand in
+          2026.
+        </Box>
+      </Box>
+
+      {/* 3 Main Precision Tabs */}
+      <SimpleGrid columns={{ base: 1, md: 3 }} gap="20px" mb="20px">
         <MiniStatistics
+          name="Average Price"
+          value={`$${stats.avgPrice}`}
           startContent={
             <IconBox
-              w='56px'
-              h='56px'
+              w="56px"
+              h="56px"
               bg={boxBg}
               icon={
-                <Icon w='32px' h='32px' as={MdBarChart} color={brandColor} />
+                <Icon w="32px" h="32px" as={MdAttachMoney} color="green.400" />
               }
             />
           }
-          name='Earnings'
-          value='$350.4'
         />
         <MiniStatistics
+          name="Pricing Markets"
+          value={stats.pricingCountries}
           startContent={
             <IconBox
-              w='56px'
-              h='56px'
+              w="56px"
+              h="56px"
               bg={boxBg}
-              icon={
-                <Icon w='32px' h='32px' as={MdAttachMoney} color={brandColor} />
-              }
+              icon={<Icon w="32px" h="32px" as={MdPublic} color="blue.400" />}
             />
           }
-          name='Spend this month'
-          value='$642.39'
-        />
-        <MiniStatistics growth='+23%' name='Sales' value='$574.34' />
-        <MiniStatistics
-          endContent={
-            <Flex me='-16px' mt='10px'>
-              <FormLabel htmlFor='balance'>
-                <Avatar src={Usa} />
-              </FormLabel>
-              <Select
-                id='balance'
-                variant='mini'
-                mt='5px'
-                me='0px'
-                defaultValue='usd'>
-                <option value='usd'>USD</option>
-                <option value='eur'>EUR</option>
-                <option value='gba'>GBA</option>
-              </Select>
-            </Flex>
-          }
-          name='Your balance'
-          value='$1,000'
         />
         <MiniStatistics
+          name="Total Market Volume"
+          value={`${stats.totalVolume} MWh`}
           startContent={
             <IconBox
-              w='56px'
-              h='56px'
-              bg='linear-gradient(90deg, #4481EB 0%, #04BEFE 100%)'
-              icon={<Icon w='28px' h='28px' as={MdAddTask} color='white' />}
+              w="56px"
+              h="56px"
+              bg="linear-gradient(90deg, #4facfe 0%, #00f2fe 100%)"
+              icon={<Icon w="28px" h="28px" as={MdAnalytics} color="white" />}
             />
           }
-          name='New Tasks'
-          value='154'
-        />
-        <MiniStatistics
-          startContent={
-            <IconBox
-              w='56px'
-              h='56px'
-              bg={boxBg}
-              icon={
-                <Icon w='32px' h='32px' as={MdFileCopy} color={brandColor} />
-              }
-            />
-          }
-          name='Total Projects'
-          value='2935'
         />
       </SimpleGrid>
 
-      <SimpleGrid columns={{ base: 1, md: 2, xl: 2 }} gap='20px' mb='20px'>
+      {/* Graphs Section */}
+      <SimpleGrid columns={{ base: 1, md: 2, xl: 2 }} gap="20px" mb="20px">
         <TotalSpent />
         <WeeklyRevenue />
-      </SimpleGrid>
-      <SimpleGrid columns={{ base: 1, md: 1, xl: 2 }} gap='20px' mb='20px'>
-        <CheckTable columnsData={columnsDataCheck} tableData={tableDataCheck} />
-        <SimpleGrid columns={{ base: 1, md: 2, xl: 2 }} gap='20px'>
-          <DailyTraffic />
-          <PieCard />
-        </SimpleGrid>
-      </SimpleGrid>
-      <SimpleGrid columns={{ base: 1, md: 1, xl: 2 }} gap='20px' mb='20px'>
-        <ComplexTable
-          columnsData={columnsDataComplex}
-          tableData={tableDataComplex}
-        />
-        <SimpleGrid columns={{ base: 1, md: 2, xl: 2 }} gap='20px'>
-          <Tasks />
-          <MiniCalendar h='100%' minW='100%' selectRange={false} />
-        </SimpleGrid>
       </SimpleGrid>
     </Box>
   );

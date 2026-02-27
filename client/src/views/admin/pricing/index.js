@@ -12,7 +12,6 @@ import {
 } from '@chakra-ui/react';
 import { MdCloudUpload, MdHistory } from 'react-icons/md';
 import * as XLSX from 'xlsx';
-// 1. Apna custom api instance import kiya
 import api from '../../../utils/axiosConfig';
 
 export default function MarketPricingUpload() {
@@ -37,15 +36,17 @@ export default function MarketPricingUpload() {
         const bstr = evt.target.result;
         const wb = XLSX.read(bstr, { type: 'binary' });
         const ws = wb.Sheets[wb.SheetNames[0]];
+
+        // Ye excel ke headers ko keys bana deta hai (e.g., Technology, Rate, etc.)
         const rawData = XLSX.utils.sheet_to_json(ws);
 
-        // 2. Axios replace karke custom 'api' use kiya aur path short kar diya
+        // API Call to Backend
         const res = await api.post('/pricing/upload-market', rawData);
 
         if (res.data.success) {
           toast({
             title: 'Upload Success',
-            description: `${res.data.count} records added to market history.`,
+            description: `${res.data.count} records synced with Technology mapping.`,
             status: 'success',
             duration: 5000,
             isClosable: true,
@@ -57,13 +58,15 @@ export default function MarketPricingUpload() {
           title: 'Error',
           description:
             err.response?.data?.message ||
-            'Upload fail ho gaya. Backend check karein.',
+            'Upload fail ho gaya. Excel headers (Technology, Rate, Country, Month) check karein.',
           status: 'error',
           duration: 5000,
           isClosable: true,
         });
       } finally {
         setIsUploading(false);
+        // Clear input so same file can be uploaded again
+        e.target.value = '';
       }
     };
     reader.readAsBinaryString(file);
@@ -72,7 +75,7 @@ export default function MarketPricingUpload() {
   return (
     <Box pt={{ base: '130px', md: '80px' }} px="20px">
       <VStack spacing="20px" align="stretch">
-        <Box bg={cardBg} p="30px" borderRadius="20px">
+        <Box bg={cardBg} p="30px" borderRadius="20px" boxShadow="sm">
           <Flex direction="column" align="center">
             <Icon
               as={MdHistory}
@@ -83,6 +86,9 @@ export default function MarketPricingUpload() {
             />
             <Text fontSize="2xl" fontWeight="700" color={textColor}>
               Market Pricing History
+            </Text>
+            <Text fontSize="sm" color={secondaryColor} mb="10px">
+              Please ensure Excel has 'Technology' column instead of 'Type'
             </Text>
 
             <Flex
@@ -101,9 +107,14 @@ export default function MarketPricingUpload() {
               _hover={{ bg: isUploading ? uploadHoverBg : 'gray.50' }}
             >
               <Icon as={MdCloudUpload} w="60px" h="60px" color="brand.500" />
-              <Text my="15px" fontWeight="500" color={secondaryColor}>
+              <Text
+                my="15px"
+                fontWeight="500"
+                color={secondaryColor}
+                textAlign="center"
+              >
                 {isUploading
-                  ? 'Processing Excel & Syncing...'
+                  ? 'Processing Technology Data & Syncing...'
                   : 'Click or Drag Excel file here'}
               </Text>
 

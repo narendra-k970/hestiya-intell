@@ -10,12 +10,10 @@ const axiosInstance = axios.create({
   },
 });
 
-// 2. Request Interceptor: Har request se pehle token check karega
 axiosInstance.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token');
     if (token) {
-      // Automatic Authorization header add kar dega
       config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
@@ -25,11 +23,9 @@ axiosInstance.interceptors.request.use(
   },
 );
 
-// 3. Response Interceptor: Error handling ko centralize karne ke liye
 axiosInstance.interceptors.response.use(
   (response) => response,
   (error) => {
-    // Agar 401 (Unauthorized) aaye toh user ko login par bhej sakte ho
     if (error.response && error.response.status === 401) {
       console.error('Session expired. Please login again.');
       // localStorage.clear();

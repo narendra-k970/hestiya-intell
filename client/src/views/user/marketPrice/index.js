@@ -1,5 +1,5 @@
 /* eslint-disable */
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import {
   Box,
   Flex,
@@ -13,60 +13,73 @@ import {
   HStack,
   Card,
   Table,
-  Thead,
   Tbody,
   Tr,
-  Th,
   Td,
-  TableContainer,
-  IconButton,
+  Thead,
+  Th,
   Divider,
+  Link,
+  Icon,
 } from '@chakra-ui/react';
-// 1. Apna custom api instance import kiya
 import api from '../../../utils/axiosConfig';
-import { MapContainer, TileLayer, Marker, Tooltip } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import {
   MdWbSunny,
   MdAir,
   MdWaterDrop,
   MdForest,
-  MdTrendingUp,
-  MdChevronLeft,
-  MdChevronRight,
+  MdPublic,
   MdFactory,
+  MdOpenInNew,
 } from 'react-icons/md';
 import L from 'leaflet';
 import { renderToStaticMarkup } from 'react-dom/server';
 import 'leaflet/dist/leaflet.css';
 
-// --- CONFIG: Color and Icon Logic ---
-const getTechConfig = (techName, isRE100) => {
-  const tech = String(techName || '').toLowerCase();
-  const isRE = isRE100 === true || String(isRE100).toLowerCase() === 'true';
-
-  let color = '#718096';
-  let icon = MdFactory;
-
-  if (isRE) {
-    if (tech.includes('solar')) {
-      icon = MdWbSunny;
-      color = '#E69138';
-    } else if (tech.includes('wind')) {
-      icon = MdAir;
-      color = '#3D85C6';
-    } else if (tech.includes('hydro')) {
-      icon = MdWaterDrop;
-      color = '#00C2FF';
-    } else if (tech.includes('biomass')) {
-      icon = MdForest;
-      color = '#6AA84F';
-    } else {
-      icon = MdTrendingUp;
-      color = '#05CD99';
-    }
+// --- CSS Fix: Specific Z-Index for Header Overlap & Layout ---
+const customStyles = `
+  .leaflet-container {
+    z-index: 0 !important;
   }
+  .leaflet-pane {
+    z-index: 0 !important;
+  }
+  .custom-m {
+    background: none !important;
+    border: none !important;
+  }
+  .leaflet-popup-content-wrapper {
+    border-radius: 15px !important;
+    padding: 5px !important;
+  }
+`;
 
-  return { icon, color, isRE };
+const getTechConfig = (techName, isRE100Flag) => {
+  const tech = String(techName || '').toLowerCase();
+  const isRenewableTech =
+    tech.includes('solar') ||
+    tech.includes('wind') ||
+    tech.includes('hydro') ||
+    tech.includes('biomass') ||
+    tech.includes('geothermal') ||
+    tech.includes('renewable');
+
+  const isRE =
+    isRE100Flag === true ||
+    String(isRE100Flag).toLowerCase() === 'true' ||
+    isRenewableTech;
+
+  if (!isRE) return { icon: MdFactory, color: '#4A5568', label: 'Non-RE' };
+  if (tech.includes('solar'))
+    return { icon: MdWbSunny, color: '#FFB302', label: 'Solar' };
+  if (tech.includes('wind'))
+    return { icon: MdAir, color: '#3182CE', label: 'Wind' };
+  if (tech.includes('hydro'))
+    return { icon: MdWaterDrop, color: '#00B5D8', label: 'Hydro' };
+  if (tech.includes('biomass'))
+    return { icon: MdForest, color: '#38A169', label: 'Biomass' };
+  return { icon: MdPublic, color: '#805AD5', label: 'RE-100' };
 };
 
 const createLeafletIcon = (techName, isRE100) => {
@@ -77,102 +90,95 @@ const createLeafletIcon = (techName, isRE100) => {
         color: 'white',
         backgroundColor: config.color,
         borderRadius: '50%',
-        width: '18px',
-        height: '18px',
+        width: '26px',
+        height: '26px',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         border: '2px solid white',
-        boxShadow: '0 0 5px rgba(0,0,0,0.3)',
+        boxShadow: '0 2px 5px rgba(0,0,0,0.3)',
       }}
     >
-      <config.icon size={12} />
+      <config.icon size={16} />
     </div>,
   );
   return L.divIcon({
     html: iconHTML,
     className: 'custom-m',
-    iconSize: [18, 18],
-    iconAnchor: [9, 9],
+    iconSize: [26, 26],
+    iconAnchor: [13, 13],
   });
 };
 
 export default function UserMarketDashboard() {
   const [allData, setAllData] = useState([]);
-  const [displayData, setDisplayData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeFilter, setActiveFilter] = useState('All');
-  const [currentPage, setCurrentPage] = useState(1);
-  const recordsPerPage = 10;
 
   const bg = useColorModeValue('#F4F7FE', '#0B1437');
   const cardBg = useColorModeValue('white', '#111C44');
+  const textColor = useColorModeValue('gray.800', 'white');
   const borderColor = useColorModeValue('gray.100', '#222E5F');
 
   useEffect(() => {
-    // 2. Updated API call to use 'api' and short endpoint
-    api
-      .get('/irec/all-data')
-      .then((res) => {
+    const fetchData = async (page = 1) => {
+      try {
+        const res = await api.get(`/irec/all-data?page=${page}&limit=400`);
         if (res.data.success) {
-          const processed = res.data.data.map((p) => {
-            const lat = parseFloat(p.latitude) || 20 + Math.random() * 5;
-            const lng = parseFloat(p.longitude) || 75 + Math.random() * 8;
-            const tech = p.technology || 'Wind';
-            const isRE =
-              p.isRE100 === true || String(p.isRE100).toLowerCase() === 'true';
+          const processed = res.data.data
+            .map((p) => {
+              const config = getTechConfig(p.technology, p.isRE100);
+              return {
+                ...p,
+                fLat: parseFloat(p.latitude),
+                fLng: parseFloat(p.longitude),
+                isRE: config.label !== 'Non-RE',
+                totalVol: (p.issuances || []).reduce(
+                  (acc, curr) => acc + (Number(curr.issuanceVolume) || 0),
+                  0,
+                ),
+              };
+            })
+            .filter((p) => !isNaN(p.fLat) && !isNaN(p.fLng));
 
-            return {
-              ...p,
-              fLat: lat,
-              fLng: lng,
-              fTech: tech,
-              isRE: isRE,
-              code: p.plantCode || 'N/A',
-              totalVol: (p.issuances || []).reduce(
-                (acc, curr) => acc + (Number(curr.issuanceVolume) || 0),
-                0,
-              ),
-            };
-          });
-          setAllData(processed);
-          setDisplayData(processed);
+          setAllData((prev) => [...prev, ...processed]);
+          if (page === 1) setLoading(false);
+          if (res.data.hasMore) fetchData(page + 1);
         }
+      } catch (err) {
         setLoading(false);
-      })
-      .catch((err) => {
-        console.error('Error fetching map data:', err);
-        setLoading(false);
-      });
+      }
+    };
+    fetchData();
   }, []);
 
-  const handleFilter = (f) => {
-    setActiveFilter(f);
-    setCurrentPage(1);
-    if (f === 'All') setDisplayData(allData);
-    else if (f === 'RE100') setDisplayData(allData.filter((p) => p.isRE));
-    else if (f === 'Non-RE100') setDisplayData(allData.filter((p) => !p.isRE));
-    else
-      setDisplayData(
-        allData.filter((p) => p.fTech.toLowerCase().includes(f.toLowerCase())),
+  const filteredData = useMemo(() => {
+    let data = [...allData];
+    if (activeFilter === 'RE-100') data = data.filter((p) => p.isRE);
+    else if (activeFilter === 'Non-RE100') data = data.filter((p) => !p.isRE);
+    else if (activeFilter !== 'All')
+      data = data.filter((p) =>
+        (p.technology || '').toLowerCase().includes(activeFilter.toLowerCase()),
       );
-  };
+    return data.sort((a, b) => b.totalVol - a.totalVol);
+  }, [allData, activeFilter]);
 
-  const currentRecords = displayData.slice(
-    (currentPage - 1) * recordsPerPage,
-    currentPage * recordsPerPage,
-  );
-  const totalPages = Math.ceil(displayData.length / recordsPerPage);
+  const globalTopProducers = useMemo(() => {
+    return [...allData].sort((a, b) => b.totalVol - a.totalVol).slice(0, 15);
+  }, [allData]);
 
   if (loading)
     return (
-      <Flex justify="center" h="100vh" align="center">
-        <Spinner size="xl" />
+      <Flex justify="center" h="100vh" align="center" bg={bg}>
+        <Spinner size="xl" color="blue.500" />
       </Flex>
     );
 
   return (
-    <Box pt="80px" px="20px" bg={bg} minH="100vh" pb="40px">
+    <Box pt="80px" px="20px" bg={bg} minH="100vh" pb="40px" position="relative">
+      <style>{customStyles}</style>
+
+      {/* --- Filters --- */}
       <Card
         bg={cardBg}
         p="15px"
@@ -181,131 +187,147 @@ export default function UserMarketDashboard() {
         border="1px solid"
         borderColor={borderColor}
       >
-        <VStack align="start" spacing={3}>
-          <HStack spacing="3" wrap="wrap">
-            {['All', 'RE100', 'Non-RE100'].map((f) => (
-              <Button
-                key={f}
-                size="xs"
-                variant={activeFilter === f ? 'solid' : 'outline'}
-                colorScheme={
-                  f === 'Non-RE100' ? 'red' : f === 'RE100' ? 'green' : 'blue'
-                }
-                onClick={() => handleFilter(f)}
-              >
-                {f}
-              </Button>
-            ))}
-          </HStack>
-          <HStack spacing="3" wrap="wrap">
-            {['Solar', 'Wind', 'Hydro', 'Biomass'].map((f) => (
-              <Button
-                key={f}
-                size="xs"
-                variant={activeFilter === f ? 'solid' : 'ghost'}
-                colorScheme="teal"
-                onClick={() => handleFilter(f)}
-              >
-                {f}
-              </Button>
-            ))}
-          </HStack>
-        </VStack>
+        <HStack spacing="3" wrap="wrap">
+          {[
+            'All',
+            'RE-100',
+            'Non-RE100',
+            'Solar',
+            'Wind',
+            'Hydro',
+            'Biomass',
+          ].map((f) => (
+            <Button
+              key={f}
+              size="xs"
+              variant={activeFilter === f ? 'solid' : 'outline'}
+              colorScheme="blue"
+              onClick={() => setActiveFilter(f)}
+              borderRadius="8px"
+            >
+              {f}
+            </Button>
+          ))}
+        </HStack>
       </Card>
 
       <SimpleGrid columns={{ base: 1, lg: 4 }} spacing="20px" mb="20px">
-        <Box gridColumn={{ lg: 'span 3' }}>
-          <Card bg={cardBg} p="10px" borderRadius="24px">
-            <Box height="65vh" borderRadius="20px" overflow="hidden">
+        {/* --- Map --- */}
+        <Box gridColumn={{ lg: 'span 3' }} position="relative" zIndex={0}>
+          <Card
+            bg={cardBg}
+            p="10px"
+            borderRadius="24px"
+            border="1px solid"
+            borderColor={borderColor}
+          >
+            <Box height="70vh" borderRadius="20px" overflow="hidden">
               <MapContainer
-                center={[22, 78]}
-                zoom={5}
+                center={[15, 20]}
+                zoom={3}
                 style={{ height: '100%', width: '100%' }}
+                preferCanvas={true}
               >
                 <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-                {displayData.map((plant, idx) => (
+                {filteredData.map((plant) => (
                   <Marker
-                    key={idx}
+                    key={plant._id}
                     position={[plant.fLat, plant.fLng]}
-                    icon={createLeafletIcon(plant.fTech, plant.isRE)}
+                    icon={createLeafletIcon(plant.technology, plant.isRE100)}
+                    eventHandlers={{ mouseover: (e) => e.target.openPopup() }}
                   >
-                    <Tooltip sticky direction="top" opacity={1}>
-                      <VStack align="stretch" spacing={2} p={1} minW="180px">
+                    <Popup maxWidth={280} autoPan={false} closeButton={false}>
+                      <VStack align="stretch" spacing={2} p={1}>
+                        <Link
+                          href={`https://evident.app/IREC/device-register/${plant.plantCode}`}
+                          isExternal
+                          fontWeight="bold"
+                          fontSize="md"
+                          color="blue.600"
+                          display="flex"
+                          alignItems="center"
+                        >
+                          {plant.plantCode}{' '}
+                          <Icon as={MdOpenInNew} ml={2} boxSize={4} />
+                        </Link>
+
+                        <HStack spacing={2}>
+                          <Badge colorScheme={plant.isRE ? 'green' : 'gray'}>
+                            {plant.isRE ? 'RE-100' : 'Non-RE'}
+                          </Badge>
+                          <Text fontSize="xs" fontWeight="600" color="gray.600">
+                            {plant.technology}
+                          </Text>
+                        </HStack>
+
+                        <Divider />
+
+                        {/* --- Issuance History Table in Popup --- */}
                         <Text
                           fontWeight="bold"
-                          fontSize="xs"
-                          borderBottom="1px solid #ddd"
-                          pb={1}
+                          fontSize="9px"
+                          color="gray.400"
+                          letterSpacing="wider"
                         >
-                          {plant.code}
+                          ISSUANCE HISTORY
                         </Text>
-                        <Text fontSize="10px">
-                          <b>Tech:</b> {plant.fTech}
-                        </Text>
-                        <Box mt={1}>
-                          <Text
-                            fontWeight="bold"
-                            fontSize="9px"
-                            mb={1}
-                            color="gray.600"
-                          >
-                            Issuance History:
-                          </Text>
-                          <Table size="xs" variant="unstyled">
-                            <Thead borderBottom="1px solid #eee">
-                              <Tr>
-                                <Th fontSize="8px" p={1}>
-                                  Year
-                                </Th>
-                                <Th fontSize="8px" p={1} isNumeric>
-                                  Volume
-                                </Th>
-                              </Tr>
-                            </Thead>
+                        <Box
+                          maxH="120px"
+                          overflowY="auto"
+                          border="1px solid"
+                          borderColor="gray.50"
+                          borderRadius="md"
+                        >
+                          <Table size="xs" variant="simple">
                             <Tbody>
-                              {plant.issuances?.length > 0 ? (
-                                plant.issuances
-                                  .sort((a, b) => b.issuingYear - a.issuingYear)
-                                  .map((v, i) => (
-                                    <Tr key={i}>
-                                      <Td fontSize="9px" p={1}>
-                                        {v.issuingYear}
-                                      </Td>
-                                      <Td fontSize="9px" p={1} isNumeric>
-                                        {v.issuanceVolume?.toLocaleString()}
-                                      </Td>
-                                    </Tr>
-                                  ))
-                              ) : (
-                                <Tr>
-                                  <Td
-                                    colSpan={2}
-                                    fontSize="9px"
-                                    textAlign="center"
-                                    p={1}
-                                  >
-                                    No Data
-                                  </Td>
-                                </Tr>
-                              )}
+                              {(plant.issuances || [])
+                                .sort((a, b) => b.issuingYear - a.issuingYear)
+                                .map((v, i) => (
+                                  <Tr key={i}>
+                                    <Td p={1} fontSize="10px">
+                                      {v.issuingYear}
+                                    </Td>
+                                    <Td
+                                      p={1}
+                                      fontSize="10px"
+                                      isNumeric
+                                      fontWeight="bold"
+                                      color="blue.700"
+                                    >
+                                      {Math.round(
+                                        v.issuanceVolume || 0,
+                                      ).toLocaleString()}
+                                    </Td>
+                                  </Tr>
+                                ))}
                             </Tbody>
                           </Table>
-                          <Divider my={1} />
-                          <Flex justify="space-between" align="center">
-                            <Text fontWeight="bold" fontSize="9px">
-                              Total:
-                            </Text>
-                            <Text
-                              fontWeight="bold"
-                              fontSize="10px"
-                              color="blue.600"
-                            >
-                              {Math.round(plant.totalVol).toLocaleString()} MWh
-                            </Text>
-                          </Flex>
                         </Box>
+
+                        <Flex
+                          justify="space-between"
+                          bg="blue.50"
+                          p={2}
+                          borderRadius="md"
+                          align="center"
+                        >
+                          <Text
+                            fontWeight="bold"
+                            fontSize="xs"
+                            color="blue.700"
+                          >
+                            Total Lifecycle:
+                          </Text>
+                          <Text
+                            fontWeight="extrabold"
+                            fontSize="xs"
+                            color="blue.900"
+                          >
+                            {Math.round(plant.totalVol).toLocaleString()} MWh
+                          </Text>
+                        </Flex>
                       </VStack>
-                    </Tooltip>
+                    </Popup>
                   </Marker>
                 ))}
               </MapContainer>
@@ -313,95 +335,103 @@ export default function UserMarketDashboard() {
           </Card>
         </Box>
 
+        {/* --- Sidebar (Top 15 Global Always) --- */}
         <Card
           bg={cardBg}
           p="20px"
           borderRadius="24px"
-          height="68vh"
+          height="73vh"
           overflowY="auto"
+          border="1px solid"
+          borderColor={borderColor}
         >
-          <Text fontWeight="bold" mb="4" fontSize="sm">
-            Issuance Ranking
+          <Text fontWeight="bold" mb="4" fontSize="sm" color={textColor}>
+            Global Leaders (Top 15)
           </Text>
-          <VStack align="stretch" spacing={2}>
-            {displayData
-              .sort((a, b) => b.totalVol - a.totalVol)
-              .slice(0, 50)
-              .map((p, i) => (
-                <Box
-                  key={i}
-                  p="2"
-                  bg={bg}
-                  borderRadius="md"
-                  borderLeft="4px solid"
-                  borderColor={getTechConfig(p.fTech, p.isRE).color}
-                >
-                  <Text fontSize="10px" fontWeight="bold" noOfLines={1}>
-                    {p.code}
-                  </Text>
-                  <Text fontSize="10px" color="blue.600">
-                    {Math.round(p.totalVol).toLocaleString()} MWh
-                  </Text>
-                </Box>
-              ))}
+          <VStack align="stretch" spacing={3}>
+            {globalTopProducers.map((p, i) => (
+              <Box
+                key={i}
+                p="3"
+                bg={bg}
+                borderRadius="xl"
+                borderLeft="4px solid"
+                borderColor={getTechConfig(p.technology, p.isRE100).color}
+              >
+                <Text fontSize="xs" fontWeight="bold" noOfLines={1}>
+                  {p.plantCode}
+                </Text>
+                <Text fontSize="10px" color="gray.500">
+                  {p.country}
+                </Text>
+                <Text fontSize="xs" fontWeight="bold" color="blue.600">
+                  {Math.round(p.totalVol).toLocaleString()} MWh
+                </Text>
+              </Box>
+            ))}
           </VStack>
         </Card>
       </SimpleGrid>
 
-      <Card bg={cardBg} p="20px" borderRadius="24px">
-        <Flex justify="space-between" mb="4">
-          <Text fontWeight="bold">Asset List ({displayData.length})</Text>
-          <HStack>
-            <IconButton
-              icon={<MdChevronLeft />}
-              size="xs"
-              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-              isDisabled={currentPage === 1}
-            />
-            <Text fontSize="xs">
-              Page {currentPage} of {totalPages || 1}
-            </Text>
-            <IconButton
-              icon={<MdChevronRight />}
-              size="xs"
-              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-              isDisabled={currentPage === totalPages}
-            />
-          </HStack>
-        </Flex>
-        <TableContainer>
+      {/* --- Bottom Table (Top 10 by Technology) --- */}
+      <Card
+        bg={cardBg}
+        p="20px"
+        borderRadius="24px"
+        border="1px solid"
+        borderColor={borderColor}
+      >
+        <Text fontWeight="bold" mb="4" fontSize="lg" color={textColor}>
+          Market Leaders: {activeFilter}
+        </Text>
+        <Box overflowX="auto">
           <Table variant="simple" size="sm">
             <Thead bg={bg}>
               <Tr>
-                <Th>Plant</Th>
-                <Th>Category</Th>
-                <Th>Tech</Th>
-                <Th isNumeric>Total Vol</Th>
+                <Th>Rank</Th>
+                <Th>Plant Code</Th>
+                <Th>Country</Th>
+                <Th>Technology</Th>
+                <Th isNumeric>Volume (MWh)</Th>
+                <Th>Certification</Th>
               </Tr>
             </Thead>
             <Tbody>
-              {currentRecords.map((p, idx) => (
-                <Tr key={idx} _hover={{ bg: bg }}>
-                  <Td fontWeight="bold" fontSize="xs">
-                    {p.code}
+              {filteredData.slice(0, 10).map((p, idx) => (
+                <Tr
+                  key={p._id}
+                  _hover={{
+                    bg: useColorModeValue('gray.50', 'whiteAlpha.100'),
+                  }}
+                >
+                  <Td fontWeight="bold" color="blue.500">
+                    #{idx + 1}
                   </Td>
                   <Td>
-                    <Badge
-                      fontSize="9px"
-                      colorScheme={p.isRE ? 'green' : 'gray'}
+                    <Link
+                      href={`https://evident.app/IREC/device-register/${p.plantCode}`}
+                      isExternal
+                      fontWeight="bold"
+                      color="blue.600"
                     >
-                      {p.isRE ? 'RE100' : 'NON-RE'}
-                    </Badge>
+                      {p.plantCode}
+                    </Link>
                   </Td>
-                  <Td fontSize="xs">{p.fTech}</Td>
-                  <Td isNumeric fontSize="xs" fontWeight="bold">
+                  <Td>{p.country}</Td>
+                  <Td>{p.technology}</Td>
+                  <Td isNumeric fontWeight="bold">
                     {Math.round(p.totalVol).toLocaleString()}
+                  </Td>
+                  <Td>
+                    <Badge colorScheme={p.isRE ? 'green' : 'gray'}>
+                      {p.isRE ? 'RE-100' : 'NON-RE'}
+                    </Badge>
                   </Td>
                 </Tr>
               ))}
             </Tbody>
           </Table>
-        </TableContainer>
+        </Box>
       </Card>
     </Box>
   );
