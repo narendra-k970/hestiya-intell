@@ -1,8 +1,8 @@
 # Ignore frontend dependencies and cache
 client/node_modules/
 client/.cache/
-client/build/
-client/dist/
+# client/build/
+# client/dist/
 
 # Ignore backend dependencies
 server/node_modules/
