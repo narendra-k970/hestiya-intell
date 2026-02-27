@@ -16,7 +16,6 @@ import {
   Image,
   useColorModeValue,
 } from '@chakra-ui/react';
-import axios from 'axios';
 import api from '../../../utils/axiosConfig';
 import { useNavigate } from 'react-router-dom';
 import FinalLogo from 'assets/img/final-logo.webp';
