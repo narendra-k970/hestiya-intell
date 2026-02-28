@@ -32,7 +32,7 @@ exports.saveIrecData = async (req, res) => {
       const result = await Irec.findOneAndUpdate(
         { plantCode: plantData.plantCode },
         { $set: plantData },
-        { upsert: true, new: true, rawResult: true }, // rawResult se pata chalega naya hai ya purana
+        { upsert: true, new: true, rawResult: true },
       );
 
       if (result.lastErrorObject && result.lastErrorObject.updatedExisting) {
@@ -154,8 +154,6 @@ exports.syncEvidentData = async (req, res) => {
         .json({ success: false, message: "Country name zaruri hai." });
     }
 
-    // --- YE HAI ASLI FIX ---
-    // Pehle check karo ki kya koi plant pending hai jiska lastSyncAt null ho
     const pendingPlants = await Irec.find({
       country: { $regex: new RegExp(`^${country}$`, "i") }, // Case-insensitive
       $or: [{ lastSyncAt: null }, { lastSyncAt: { $exists: false } }],
@@ -169,7 +167,7 @@ exports.syncEvidentData = async (req, res) => {
       return res.status(200).json({
         success: true,
         message: `${country} ke sabhi plants pehle se synced hain ya DB mein nahi hain.`,
-        alreadySynced: true, // Frontend ko batane ke liye
+        alreadySynced: true,
       });
     }
 
@@ -207,10 +205,10 @@ exports.fixSyncData = async (req, res) => {
   try {
     const result = await Irec.updateMany(
       {
-        country: "Egypt", // Sirf Brazil target karo
-        issuances: { $size: 0 }, // Jinme data nahi aaya
+        country: "Egypt",
+        issuances: { $size: 0 },
       },
-      { $unset: { lastSyncAt: "" } }, // Unka sync status delete kar do
+      { $unset: { lastSyncAt: "" } },
     );
 
     res.status(200).json({
