@@ -1,6 +1,7 @@
 // 1. Industry List
 export const industries = [
   'Aerospace & Defense',
+  'Climate tech & Sustainability',
   'Agriculture & Farming',
   'Automotive & Transportation Equipment',
   'Blockchain & Fintech',

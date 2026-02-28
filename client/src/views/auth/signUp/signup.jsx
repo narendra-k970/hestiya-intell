@@ -211,41 +211,133 @@ const AuthForm = () => {
           )}
 
           {step === 3 && (
-            <VStack spacing={5}>
+            <VStack spacing={4}>
+              {/* 1. Name Section */}
               <SimpleGrid columns={[1, 2]} spacing={4} w="full">
                 <Input
                   name="firstName"
                   placeholder="First Name"
                   borderRadius="16px"
                   onChange={handleChange}
+                  required
                 />
                 <Input
                   name="lastName"
                   placeholder="Last Name"
                   borderRadius="16px"
                   onChange={handleChange}
+                  required
                 />
               </SimpleGrid>
 
+              {/* 2. Authentication & Contact */}
+              <FormControl isRequired>
+                <Input
+                  name="password"
+                  type="password"
+                  placeholder="Create Password"
+                  borderRadius="16px"
+                  onChange={handleChange}
+                />
+              </FormControl>
+
+              <Input
+                name="phoneNumber"
+                placeholder="Phone Number (with country code)"
+                borderRadius="16px"
+                onChange={handleChange}
+              />
+
               <Select
-                name="industry"
-                placeholder="Select Industry"
+                name="gender"
+                placeholder="Select Gender"
                 borderRadius="16px"
                 onChange={handleChange}
               >
-                {industries.map((i) => (
-                  <option key={i} value={i}>
-                    {i}
+                {genders.map((g) => (
+                  <option key={g} value={g}>
+                    {g}
                   </option>
                 ))}
               </Select>
 
+              <Divider py={2} />
+              <Text
+                fontSize="sm"
+                fontWeight="bold"
+                alignSelf="flex-start"
+                color={brandGreen}
+              >
+                COMPANY INFORMATION
+              </Text>
+
+              {/* 3. Company Section */}
+              <Input
+                name="companyName"
+                placeholder="Company Legal Name"
+                borderRadius="16px"
+                onChange={handleChange}
+              />
+
+              <SimpleGrid columns={[1, 2]} spacing={4} w="full">
+                <Select
+                  name="industry"
+                  placeholder="Industry"
+                  borderRadius="16px"
+                  onChange={handleChange}
+                >
+                  {industries.map((i) => (
+                    <option key={i} value={i}>
+                      {i}
+                    </option>
+                  ))}
+                </Select>
+                <Select
+                  name="companySize"
+                  placeholder="Company Size"
+                  borderRadius="16px"
+                  onChange={handleChange}
+                >
+                  {companySizes.map((s) => (
+                    <option key={s} value={s}>
+                      {s}
+                    </option>
+                  ))}
+                </Select>
+              </SimpleGrid>
+
+              <Select
+                name="countryOfIncorporation"
+                placeholder="Country of Incorporation"
+                borderRadius="16px"
+                onChange={handleChange}
+                color="black" // Text visibility ke liye
+                bg="white"
+              >
+                {countries && countries.length > 0 ? (
+                  countries.map((c, index) => (
+                    <option key={c.code || index} value={c.name || c}>
+                      {c.name || c}
+                    </option>
+                  ))
+                ) : (
+                  <option disabled>Loading countries...</option>
+                )}
+              </Select>
+
+              <Input
+                name="reason"
+                placeholder="Reason"
+                borderRadius="16px"
+                onChange={handleChange}
+              />
+
               <Button
                 bg={brandGreen}
                 color="white"
-                size="lg"
                 w="full"
                 h="50px"
+                mt={4}
                 borderRadius="16px"
                 onClick={handleFinalSubmit}
                 isLoading={loading}

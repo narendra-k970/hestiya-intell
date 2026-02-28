@@ -58,10 +58,11 @@ exports.sendOtp = async (req, res) => {
 
     // 3. Email bhejo
     await transporter.sendMail({
-      from: '"Hestiya Marketplace" <connect@hestiya.com>',
+      from: '"Hestiya Intelligence" <connect@hestiya.com>',
       to: normalizedEmail,
-      subject: "Verification Code - Hestiya Marketplace",
-      html: `<h3>Your OTP is: ${otp}</h3>`,
+      subject: "Verification Code - Hestiya Intelligence",
+      html: `<h3>Hello,Thank you for choosing Hestiya Intelligence. To secure your account and proceed with your registration, please use the verification code provided below.
+Your OTP is: ${otp}</h3>`,
     });
 
     res.json({ success: true, message: "OTP sent and saved successfully." });
