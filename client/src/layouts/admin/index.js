@@ -22,63 +22,74 @@ export default function Dashboard(props) {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // User details nikaalte hain state sync ke liye
   const userData = localStorage.getItem('user');
   const user = userData ? JSON.parse(userData) : null;
-  const userRole = user?.role || 'user';
+  const userRole = (user?.role || 'user').toLowerCase();
 
   const sidebarWidth = toggleSidebar ? '80px' : '285px';
 
-  // 1. Security & Redirection Check
   useEffect(() => {
     if (!userData) {
       navigate('/auth/sign-in');
       return;
     }
+  }, [navigate, userData]);
 
-    // Current route ko find karo taaki permission check ho sake
-    const currentRoute = routes.find((route) =>
-      location.pathname.includes(route.layout + route.path),
-    );
-
-    // Agar route mil gaya aur roles define hain, toh check karo permission hai ya nahi
-    if (currentRoute && currentRoute.roles) {
-      if (!currentRoute.roles.includes(userRole)) {
-        // Galat role hai toh sahi dashboard pe bhagao
-        const defaultPath =
-          userRole === 'admin' ? '/admin/default' : '/user/default';
-        navigate(defaultPath);
+  // --- 2. Navbar Brand Text (Updated to support groups) ---
+  const getActiveRoute = (routesList) => {
+    for (let i = 0; i < routesList.length; i++) {
+      if (routesList[i].isGroup) {
+        const found = getActiveRoute(routesList[i].items);
+        if (found !== 'Dashboard') return found;
+      } else {
+        if (
+          location.pathname.includes(routesList[i].layout + routesList[i].path)
+        ) {
+          return routesList[i].name;
+        }
       }
     }
-  }, [location, navigate, userData, userRole]);
-
-  // 2. Navbar Brand Text dynamic
-  const getActiveRoute = (routes) => {
-    let activeRoute = 'Dashboard';
-    for (let i = 0; i < routes.length; i++) {
-      if (
-        window.location.href.indexOf(routes[i].layout + routes[i].path) !== -1
-      ) {
-        return routes[i].name;
-      }
-    }
-    return activeRoute;
+    return 'Dashboard';
   };
 
-  // 3. Routes Generate karne wala function (FIXED HERE)
-  const getRoutes = (routes) => {
-    return routes.map((route, key) => {
-      // Ab ye /admin aur /user dono layout ko render karega
-      if (route.layout === '/admin' || route.layout === '/user') {
-        // Agar route ke liye role restriction hai aur user ke paas permission nahi hai
-        if (route.roles && !route.roles.includes(userRole)) return null;
+  // --- 3. Routes Generate Function (RECURSIVE FIX) ---
+  const getRoutes = (routesList) => {
+    let allRoutes = [];
 
-        return (
-          <Route path={`${route.path}`} element={route.component} key={key} />
+    routesList.forEach((route, key) => {
+      // Case A: Agar ye Group hai (I-Recs), toh iske andar ke items ko nikaalo
+      if (route.isGroup && route.items) {
+        route.items.forEach((item, index) => {
+          if (
+            item.roles &&
+            !item.roles.map((r) => r.toLowerCase()).includes(userRole)
+          )
+            return;
+
+          allRoutes.push(
+            <Route
+              path={`${item.path}`}
+              element={item.component}
+              key={`${key}-${index}`}
+            />,
+          );
+        });
+      }
+      // Case B: Agar ye normal route hai (Home, Carbon Credits)
+      else if (route.layout === '/admin' || route.layout === '/user') {
+        if (
+          route.roles &&
+          !route.roles.map((r) => r.toLowerCase()).includes(userRole)
+        )
+          return;
+
+        allRoutes.push(
+          <Route path={`${route.path}`} element={route.component} key={key} />,
         );
       }
-      return null;
     });
+
+    return allRoutes;
   };
 
   const { onOpen } = useDisclosure();
@@ -121,10 +132,7 @@ export default function Dashboard(props) {
             pt="50px"
           >
             <Routes>
-              {/* Dynamic Routes Load honge */}
               {getRoutes(routes)}
-
-              {/* Default redirect agar path match na kare */}
               <Route
                 path="/"
                 element={

@@ -11,6 +11,8 @@ import {
   useDisclosure,
   DrawerContent,
   DrawerCloseButton,
+  Button,
+  Text,
 } from '@chakra-ui/react';
 import Content from 'components/sidebar/components/Content';
 import {
@@ -22,40 +24,24 @@ import { Scrollbars } from 'react-custom-scrollbars-2';
 import PropTypes from 'prop-types';
 import { SidebarContext } from 'contexts/SidebarContext';
 import { IoMenuOutline } from 'react-icons/io5';
+import { MdHeadsetMic } from 'react-icons/md';
+
+const BRAND_GREEN = '#249758';
 
 function Sidebar(props) {
   const { routes } = props;
   const { toggleSidebar } = useContext(SidebarContext);
 
-  // --- ROBUST FILTERING LOGIC ---
   const filteredRoutes = useMemo(() => {
     const userData = localStorage.getItem('user');
-    let userRole = 'user';
-
-    if (userData) {
-      try {
-        const parsedUser = JSON.parse(userData);
-        // Role ko hamesha lowercase mein lo mismatch se bachne ke liye
-        userRole = (parsedUser.role || 'user').toLowerCase();
-      } catch (e) {
-        console.error('Sidebar Auth Error:', e);
-      }
-    }
-
+    const userRole = userData
+      ? JSON.parse(userData).role.toLowerCase()
+      : 'user';
     return routes.filter((route) => {
-      // 1. Auth routes ko kabhi mat dikhao
       if (route.layout === '/auth') return false;
-
-      // 2. Layout Match: User role ke hisaab se sahi prefix dhundo
+      if (route.isGroup) return true;
       const currentLayout = userRole === 'admin' ? '/admin' : '/user';
-      const isLayoutMatch = route.layout === currentLayout;
-
-      // 3. Role Check: Kya ye route user ke role ke liye allowed hai?
-      const isRoleAllowed = route.roles
-        ? route.roles.map((r) => r.toLowerCase()).includes(userRole)
-        : true;
-
-      return isLayoutMatch && isRoleAllowed;
+      return route.layout === currentLayout;
     });
   }, [routes]);
 
@@ -80,24 +66,53 @@ function Sidebar(props) {
         w={sidebarWidth}
         h="100vh"
         m="0px"
-        overflowX="hidden"
         boxShadow={shadow}
+        display="flex"
+        flexDirection="column"
       >
-        <Scrollbars
-          autoHide
-          renderTrackVertical={renderTrack}
-          renderThumbVertical={renderThumb}
-          renderView={renderView}
+        {/* Scrollable Content */}
+        <Box flex="1" overflow="hidden">
+          <Scrollbars
+            autoHide
+            renderTrackVertical={renderTrack}
+            renderThumbVertical={renderThumb}
+            renderView={renderView}
+          >
+            <Content routes={filteredRoutes} />
+          </Scrollbars>
+        </Box>
+
+        {/* Fixed Bottom Button */}
+        <Box
+          p="5px 20px"
+          borderTop="1px solid"
+          borderColor={useColorModeValue('gray.100', 'whiteAlpha.100')}
         >
-          {/* Filtered routes pass ho rahe hain */}
-          <Content routes={filteredRoutes} />
-        </Scrollbars>
+          <Button
+            variant="solid"
+            bg={BRAND_GREEN}
+            color="white"
+            w="100%"
+            h="46px"
+            borderRadius="12px"
+            _hover={{ bg: '#1e7d48' }}
+            leftIcon={!toggleSidebar ? <Icon as={MdHeadsetMic} /> : null}
+            onClick={() => window.open('#', '_blank')}
+          >
+            {!toggleSidebar ? (
+              <Text fontSize="sm" fontWeight="700">
+                Talk To An Advisor
+              </Text>
+            ) : (
+              <Icon as={MdHeadsetMic} boxSize="20px" />
+            )}
+          </Button>
+        </Box>
       </Box>
     </Box>
   );
 }
 
-// Mobile Responsive Version
 export function SidebarResponsive(props) {
   const { routes } = props;
   const { isOpen, onOpen, onClose } = useDisclosure();
@@ -111,14 +126,16 @@ export function SidebarResponsive(props) {
     const userRole = userData
       ? JSON.parse(userData).role.toLowerCase()
       : 'user';
-
     return routes.filter((route) => {
       if (route.layout === '/auth') return false;
-      const currentLayout = userRole === 'admin' ? '/admin' : '/user';
-      return (
-        route.layout === currentLayout &&
-        (route.roles ? route.roles.includes(userRole) : true)
-      );
+      const isRoleAllowed = route.roles ? route.roles.includes(userRole) : true;
+      if (route.isGroup && route.items) {
+        route.items = route.items.filter((sub) =>
+          sub.roles ? sub.roles.includes(userRole) : true,
+        );
+        return route.items.length > 0;
+      }
+      return isRoleAllowed;
     });
   }, [routes]);
 
@@ -128,11 +145,10 @@ export function SidebarResponsive(props) {
         <Icon
           as={IoMenuOutline}
           color={menuColor}
-          my="auto"
           w="20px"
           h="20px"
           me="10px"
-          _hover={{ cursor: 'pointer' }}
+          cursor="pointer"
         />
       </Flex>
       <Drawer
@@ -144,15 +160,34 @@ export function SidebarResponsive(props) {
         <DrawerOverlay />
         <DrawerContent w="285px" maxW="285px" bg={sidebarBackgroundColor}>
           <DrawerCloseButton zIndex="3" />
-          <DrawerBody maxW="285px" px="0rem" pb="0">
-            <Scrollbars
-              autoHide
-              renderTrackVertical={renderTrack}
-              renderThumbVertical={renderThumb}
-              renderView={renderView}
-            >
-              <Content routes={filteredRoutes} />
-            </Scrollbars>
+          <DrawerBody
+            px="0rem"
+            pb="0"
+            display="flex"
+            flexDirection="column"
+            h="100vh"
+          >
+            <Box flex="1" overflow="hidden">
+              <Scrollbars
+                autoHide
+                renderTrackVertical={renderTrack}
+                renderThumbVertical={renderThumb}
+                renderView={renderView}
+              >
+                <Content routes={filteredRoutes} />
+              </Scrollbars>
+            </Box>
+            <Box p="20px">
+              <Button
+                bg={BRAND_GREEN}
+                color="white"
+                w="100%"
+                borderRadius="12px"
+                leftIcon={<Icon as={MdHeadsetMic} />}
+              >
+                Talk To An Advisor
+              </Button>
+            </Box>
           </DrawerBody>
         </DrawerContent>
       </Drawer>
@@ -160,8 +195,5 @@ export function SidebarResponsive(props) {
   );
 }
 
-Sidebar.propTypes = {
-  routes: PropTypes.arrayOf(PropTypes.object),
-};
-
+Sidebar.propTypes = { routes: PropTypes.arrayOf(PropTypes.object) };
 export default Sidebar;

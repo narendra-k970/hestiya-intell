@@ -109,7 +109,7 @@ const Login = () => {
             <Divider />
 
             <FormControl isRequired>
-              <FormLabel color={textColor}>Corporate Email</FormLabel>
+              <FormLabel color={textColor}>Email</FormLabel>
               <Input
                 name="email"
                 type="email"
@@ -154,9 +154,9 @@ const Login = () => {
             </Button>
 
             <VStack spacing={3}>
-              <Link color={brandGreen} fontSize="sm" fontWeight="600" href="#">
+              {/* <Link color={brandGreen} fontSize="sm" fontWeight="600" href="#">
                 Forgot Password?
-              </Link>
+              </Link> */}
               <Text fontSize="sm" color={textColor}>
                 Don't have an account?{' '}
                 <Link

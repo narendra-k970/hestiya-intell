@@ -1,145 +1,221 @@
 /* eslint-disable */
 import {
   Box,
-  Button,
   Flex,
   Icon,
   Text,
   useColorModeValue,
   Spinner,
+  Select,
+  HStack,
+  VStack,
 } from '@chakra-ui/react';
 import Card from 'components/card/Card.js';
-import LineChart from 'components/charts/LineChart';
-import React, { useEffect, useState } from 'react';
+import BarChart from 'components/charts/BarChart';
+import React, { useEffect, useState, useMemo } from 'react';
 import { IoCheckmarkCircle } from 'react-icons/io5';
 import { MdBarChart, MdOutlineCalendarToday } from 'react-icons/md';
 import api from 'utils/axiosConfig';
 
+// SOFTER PROFESSIONAL GREEN
+const SOFT_GREEN = '#48BB78';
+const LIGHT_GREEN_TOWER = '#C6F6D5';
+
 export default function TotalSpent(props) {
   const { ...rest } = props;
-  const [chartData, setChartData] = useState([]);
-  const [chartOptions, setChartOptions] = useState({});
+  const [rawData, setRawData] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [selectedMonth, setSelectedMonth] = useState('February'); // Default to latest
 
   const textColor = useColorModeValue('secondaryGray.900', 'white');
-  const boxBg = useColorModeValue('secondaryGray.300', 'whiteAlpha.100');
-  const iconColor = useColorModeValue('brand.500', 'white');
+  const iconColor = SOFT_GREEN;
 
   useEffect(() => {
-    const fetchPricingTrend = async () => {
+    const fetchData = async () => {
       try {
-        const res = await api.get('/pricing/country-avg'); // Aapka API endpoint
-        const rawData = res.data?.data || [];
-
-        // 1. Unique Countries ki list nikalna (X-Axis ke liye)
-        const countries = [
-          ...new Set(rawData.map((item) => item.country)),
-        ].sort();
-
-        // 2. Data ko organize karna (January aur February ke liye)
-        const janPrices = countries.map((country) => {
-          const entry = rawData.find(
-            (d) => d.country === country && d.month === 'January',
-          );
-          return entry ? entry.avgPrice : 0;
-        });
-
-        const febPrices = countries.map((country) => {
-          // Note: Agar India jaise multiple entries hain, to unka average le rahe hain
-          const entries = rawData.filter(
-            (d) => d.country === country && d.month === 'February',
-          );
-          if (entries.length > 0) {
-            const sum = entries.reduce((acc, curr) => acc + curr.avgPrice, 0);
-            return (sum / entries.length).toFixed(2);
-          }
-          return 0;
-        });
-
-        // 3. Chart Data Format
-        setChartData([
-          { name: 'January Price', data: janPrices },
-          { name: 'February Price', data: febPrices },
-        ]);
-
-        // 4. Chart Options (Styling)
-        setChartOptions({
-          chart: {
-            type: 'line', // Aap ise "area" ya "bar" bhi kar sakte hain comparison ke liye
-            toolbar: { show: false },
-            dropShadow: {
-              enabled: true,
-              top: 13,
-              left: 0,
-              blur: 10,
-              opacity: 0.1,
-              color: '#4318FF',
-            },
-          },
-          colors: ['#4318FF', '#6AD2FF'], // Blue for Jan, Light Blue for Feb
-          stroke: { curve: 'smooth', width: 3 },
-          xaxis: {
-            categories: countries,
-            labels: {
-              style: { colors: '#A3AED0', fontSize: '10px', fontWeight: '500' },
-            },
-          },
-          grid: { show: false },
-          tooltip: { theme: 'dark' },
-          legend: { show: true, position: 'top', horizontalAlign: 'right' },
-        });
+        const res = await api.get('/pricing/country-avg');
+        setRawData(res.data?.data || []);
       } catch (err) {
-        console.error('Error building chart:', err);
+        console.error('Error:', err);
       } finally {
         setLoading(false);
       }
     };
-
-    fetchPricingTrend();
+    fetchData();
   }, []);
+
+  const availableMonths = useMemo(
+    () => [...new Set(rawData.map((d) => d.month))],
+    [rawData],
+  );
+
+  // Logic to find Previous Month automatically
+  const prevMonth = useMemo(() => {
+    const monthOrder = [
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December',
+    ];
+    const idx = monthOrder.indexOf(selectedMonth);
+    return idx > 0 ? monthOrder[idx - 1] : monthOrder[0];
+  }, [selectedMonth]);
+
+  const { chartData, chartOptions, countriesCount } = useMemo(() => {
+    const countries = [...new Set(rawData.map((item) => item.country))].sort();
+
+    // Previous Month Data
+    const dataPrev = countries.map((c) =>
+      (
+        rawData.find((d) => d.country === c && d.month === prevMonth)
+          ?.avgPrice || 0
+      ).toFixed(2),
+    );
+    // Selected (Current) Month Data
+    const dataCurr = countries.map((c) =>
+      (
+        rawData.find((d) => d.country === c && d.month === selectedMonth)
+          ?.avgPrice || 0
+      ).toFixed(2),
+    );
+
+    const options = {
+      chart: { type: 'bar', toolbar: { show: false }, stacked: false },
+      plotOptions: {
+        bar: {
+          borderRadius: 5,
+          columnWidth: '50%',
+          dataLabels: { position: 'top' },
+        },
+      },
+      colors: [LIGHT_GREEN_TOWER, SOFT_GREEN],
+      dataLabels: {
+        enabled: true,
+        formatter: (val) => (val > 0 ? `$${val}` : ''),
+        offsetY: -20,
+        style: { fontSize: '10px', colors: ['#718096'] },
+      },
+      xaxis: {
+        categories: countries,
+        labels: {
+          style: { colors: '#A3AED0', fontSize: '11px', fontWeight: '600' },
+        },
+        axisBorder: { show: false },
+        axisTicks: { show: false },
+      },
+      yaxis: {
+        show: true,
+        labels: {
+          style: { colors: '#A3AED0', fontSize: '10px' },
+          formatter: (v) => `$${v}`,
+        },
+      },
+      grid: { borderColor: 'rgba(163, 174, 208, 0.1)', strokeDashArray: 5 },
+      tooltip: { theme: 'dark' },
+      legend: {
+        show: true,
+        position: 'top',
+        horizontalAlign: 'right',
+        labels: { colors: '#A3AED0' },
+      },
+    };
+
+    return {
+      chartData: [
+        { name: `Prev (${prevMonth})`, data: dataPrev },
+        { name: `Current (${selectedMonth})`, data: dataCurr },
+      ],
+      chartOptions: options,
+      countriesCount: countries.length,
+    };
+  }, [rawData, selectedMonth, prevMonth]);
 
   if (loading)
     return (
       <Flex justify="center" align="center" h="300px">
-        <Spinner color="brand.500" />
+        <Spinner color={SOFT_GREEN} />
       </Flex>
     );
 
   return (
     <Card
-      justifyContent="center"
-      align="center"
-      direction="column"
+      p="20px"
+      alignItems="center"
+      flexDirection="column"
       w="100%"
-      mb="0px"
       {...rest}
     >
-      <Flex justify="space-between" ps="0px" pe="20px" pt="5px">
-        <Flex align="center" w="100%">
-          <Button
-            bg={boxBg}
-            fontSize="sm"
-            fontWeight="500"
-            color="secondaryGray.600"
-            borderRadius="7px"
+      <Flex justify="space-between" align="center" w="100%" mb="20px">
+        <VStack align="start" spacing="2px">
+          <Text color={textColor} fontSize="lg" fontWeight="700">
+            Pricing Trends
+          </Text>
+          <HStack spacing="5px">
+            <Icon as={MdOutlineCalendarToday} color={SOFT_GREEN} />
+            <Text color="secondaryGray.600" fontSize="xs" fontWeight="500">
+              Monthly Comparison
+            </Text>
+          </HStack>
+        </VStack>
+
+        <HStack>
+          <Text fontSize="xs" fontWeight="bold" color="gray.500">
+            Month:
+          </Text>
+          <Select
+            size="sm"
+            variant="outline"
+            borderRadius="8px"
+            value={selectedMonth}
+            onChange={(e) => setSelectedMonth(e.target.value)}
+            borderColor={SOFT_GREEN}
+            _hover={{ borderColor: SOFT_GREEN }}
+            maxW="130px"
           >
-            <Icon as={MdOutlineCalendarToday} me="4px" />
-            Price Comparison: Jan vs Feb
-          </Button>
-          <Button ms="auto" bg={boxBg} w="37px" h="37px" borderRadius="10px">
-            <Icon as={MdBarChart} color={iconColor} w="24px" h="24px" />
-          </Button>
-        </Flex>
+            {availableMonths.map((m) => (
+              <option key={m} value={m} style={{ color: 'black' }}>
+                {m}
+              </option>
+            ))}
+          </Select>
+        </HStack>
       </Flex>
 
-      <Box minH="260px" mt="20px">
-        <LineChart chartData={chartData} chartOptions={chartOptions} />
+      {/* Container for Chart - No Vertical Scroll */}
+      <Box
+        w="100%"
+        overflowX="auto"
+        overflowY="hidden"
+        pb="5px"
+        css={{
+          '&::-webkit-scrollbar': { height: '5px' },
+          '&::-webkit-scrollbar-thumb': {
+            background: '#E2E8F0',
+            borderRadius: '10px',
+          },
+          '&::-webkit-scrollbar-thumb:hover': { background: SOFT_GREEN },
+        }}
+      >
+        <Box
+          minW={countriesCount > 6 ? `${countriesCount * 110}px` : '100%'}
+          h="280px"
+        >
+          <BarChart chartData={chartData} chartOptions={chartOptions} />
+        </Box>
       </Box>
 
-      <Flex align="center" mt="10px">
-        <Icon as={IoCheckmarkCircle} color="green.500" me="4px" />
-        <Text color="green.500" fontSize="sm" fontWeight="700">
-          Market analysis complete for {chartData[0]?.data.length} countries
+      <Flex w="100%" align="center" mt="10px">
+        <Icon as={IoCheckmarkCircle} color={SOFT_GREEN} me="5px" />
+        <Text color={SOFT_GREEN} fontSize="xs" fontWeight="700">
+          Comparing {selectedMonth} with {prevMonth}.
         </Text>
       </Flex>
     </Card>

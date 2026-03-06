@@ -138,7 +138,6 @@ exports.updateIssuanceHistory = async (req, res) => {
 let isSyncingInProgress = false;
 
 exports.syncEvidentData = async (req, res) => {
-  console.log("!!! Trigger API Hit Ho Gayi !!!");
   try {
     if (isSyncingInProgress) {
       return res.status(400).json({

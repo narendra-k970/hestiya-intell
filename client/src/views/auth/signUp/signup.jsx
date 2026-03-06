@@ -57,18 +57,26 @@ const AuthForm = () => {
   };
 
   const handleSendOtp = async () => {
-    setLoading(true);
     try {
-      // 2. Updated to use 'api' and short endpoint
-      await api.post('/user/send-otp', {
-        email: formData.email,
+      const res = await api.post('/auth/send-otp', { email });
+      // Success Case
+      toast({
+        title: 'OTP Sent',
+        description: res.data.message,
+        status: 'success',
       });
-      toast({ title: 'OTP Sent!', status: 'success' });
-      setStep(2);
     } catch (err) {
-      toast({ title: err.response?.data?.message || 'Error', status: 'error' });
+      const serverMessage = err.response?.data?.message;
+      const fallbackMessage = 'Connection Error. Please try again.';
+
+      toast({
+        title: 'Registration Error',
+        description: serverMessage || fallbackMessage, // Ab yahan "Email already registered" dikhega
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
     }
-    setLoading(false);
   };
 
   const handleVerifyOtp = async () => {

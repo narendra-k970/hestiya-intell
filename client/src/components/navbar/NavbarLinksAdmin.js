@@ -1,11 +1,7 @@
-// Chakra Imports
+/* eslint-disable */
+import React from 'react';
 import {
-  Avatar,
-  Button,
   Flex,
-  Icon,
-  Image,
-  Link,
   Menu,
   MenuButton,
   MenuItem,
@@ -14,67 +10,32 @@ import {
   useColorModeValue,
   useColorMode,
 } from '@chakra-ui/react';
-// Custom Components
-import { ItemContent } from 'components/menu/ItemContent';
+import { useNavigate } from 'react-router-dom'; // 1. Navigate import karo
 import { SearchBar } from 'components/navbar/searchBar/SearchBar';
 import { SidebarResponsive } from 'components/sidebar/Sidebar';
 import PropTypes from 'prop-types';
-import React, { useState, useEffect } from 'react'; // Added useEffect and useState
-// Assets
-import navImage from 'assets/img/layout/Navbar.png';
-import { MdNotificationsNone, MdInfoOutline } from 'react-icons/md';
 import { IoMdMoon, IoMdSunny } from 'react-icons/io';
-import { FaEthereum } from 'react-icons/fa';
-import routes from 'routes';
-import { useNavigate } from 'react-router-dom';
+import routes from 'routes.js';
 
 export default function HeaderLinks(props) {
   const { secondary } = props;
   const { colorMode, toggleColorMode } = useColorMode();
-  const navigate = useNavigate();
+  const navigate = useNavigate(); // 2. Navigate initialize karo
 
-  // --- Dynamic User Logic ---
-  const [userName, setUserName] = useState('User');
-
-  useEffect(() => {
-    const userData = localStorage.getItem('user');
-    if (userData) {
-      try {
-        const user = JSON.parse(userData);
-        setUserName(user.name); // API se aaya hua user name set karega
-      } catch (err) {
-        console.error('Error parsing user data', err);
-      }
-    }
-  }, []);
-
-  const handleLogout = () => {
-    // Clear specific token or everything
-    localStorage.removeItem('user');
-    localStorage.removeItem('token'); // Agar token use kar rahe hain
-    localStorage.clear();
-
-    // Use a small timeout to ensure storage is cleared before navigating
-    setTimeout(() => {
-      navigate('/auth/sign-in');
-      window.location.reload(); // Yeh page ko refresh karke state clean kar dega
-    }, 100);
-  };
-
-  // Chakra Color Mode
   const navbarIcon = useColorModeValue('gray.400', 'white');
-  let menuBg = useColorModeValue('white', 'navy.800');
-  const textColor = useColorModeValue('secondaryGray.900', 'white');
-  const textColorBrand = useColorModeValue('brand.700', 'brand.400');
-  const ethColor = useColorModeValue('gray.700', 'white');
-  const borderColor = useColorModeValue('#E6ECFA', 'rgba(135, 140, 189, 0.3)');
-  const ethBg = useColorModeValue('secondaryGray.300', 'navy.900');
-  const ethBox = useColorModeValue('white', 'navy.800');
+  const menuBg = useColorModeValue('white', 'navy.800');
   const shadow = useColorModeValue(
     '14px 17px 40px 4px rgba(112, 144, 176, 0.18)',
     '14px 17px 40px 4px rgba(112, 144, 176, 0.06)',
   );
-  const borderButton = useColorModeValue('secondaryGray.500', 'whiteAlpha.200');
+
+  // 3. Logout Logic Function
+  const handleLogout = () => {
+    localStorage.clear(); // Saara data delete (token etc.)
+    sessionStorage.clear();
+    navigate('/auth/sign-in'); // Login page par bhejo (apna path check kar lena)
+    window.location.reload(); // Ek baar refresh taaki state clean ho jaye
+  };
 
   return (
     <Flex
@@ -82,193 +43,43 @@ export default function HeaderLinks(props) {
       alignItems="center"
       flexDirection="row"
       bg={menuBg}
-      flexWrap={secondary ? { base: 'wrap', md: 'nowrap' } : 'unset'}
       p="10px"
       borderRadius="30px"
       boxShadow={shadow}
     >
-      <SearchBar
-        mb={() => {
-          if (secondary) {
-            return { base: '10px', md: 'unset' };
-          }
-          return 'unset';
-        }}
-        me="10px"
-        borderRadius="30px"
-      />
-
-      {/* ETH Balance section (Optional: stays as is or can be removed) */}
-      <Flex
-        bg={ethBg}
-        display={secondary ? 'flex' : 'none'}
-        borderRadius="30px"
-        ms="auto"
-        p="6px"
-        align="center"
-        me="6px"
-      >
-        <Flex
-          align="center"
-          justify="center"
-          bg={ethBox}
-          h="29px"
-          w="29px"
-          borderRadius="30px"
-          me="7px"
-        >
-          <Icon color={ethColor} w="9px" h="14px" as={FaEthereum} />
-        </Flex>
-        <Text
-          w="max-content"
-          color={ethColor}
-          fontSize="sm"
-          fontWeight="700"
-          me="6px"
-        >
-          1,924
-          <Text as="span" display={{ base: 'none', md: 'unset' }}>
-            {' '}
-            ETH
-          </Text>
-        </Text>
-      </Flex>
+      <SearchBar me="10px" borderRadius="30px" />
 
       <SidebarResponsive routes={routes} />
 
-      {/* Notifications Menu */}
-      <Menu>
-        <MenuButton p="0px">
-          <Icon
-            mt="6px"
-            as={MdNotificationsNone}
-            color={navbarIcon}
-            w="18px"
-            h="18px"
-            me="10px"
-          />
-        </MenuButton>
-        <MenuList
-          boxShadow={shadow}
-          p="20px"
-          borderRadius="20px"
-          bg={menuBg}
-          border="none"
-          mt="22px"
-          minW={{ base: 'unset', md: '400px', xl: '450px' }}
-        >
-          <Flex w="100%" mb="20px">
-            <Text fontSize="md" fontWeight="600" color={textColor}>
-              Notifications
-            </Text>
-            <Text
-              fontSize="sm"
-              fontWeight="500"
-              color={textColorBrand}
-              ms="auto"
-              cursor="pointer"
-            >
-              Mark all read
-            </Text>
-          </Flex>
-          <Flex flexDirection="column">
-            <MenuItem
-              _hover={{ bg: 'none' }}
-              _focus={{ bg: 'none' }}
-              px="0"
-              borderRadius="8px"
-              mb="10px"
-            >
-              <ItemContent info="Horizon UI Dashboard PRO" />
-            </MenuItem>
-            <MenuItem
-              _hover={{ bg: 'none' }}
-              _focus={{ bg: 'none' }}
-              px="0"
-              borderRadius="8px"
-              mb="10px"
-            >
-              <ItemContent info="Horizon Design System Free" />
-            </MenuItem>
-          </Flex>
-        </MenuList>
-      </Menu>
-
-      {/* Info Menu */}
-      <Menu>
-        <MenuButton p="0px">
-          <Icon
-            mt="6px"
-            as={MdInfoOutline}
-            color={navbarIcon}
-            w="18px"
-            h="18px"
-            me="10px"
-          />
-        </MenuButton>
-        <MenuList
-          boxShadow={shadow}
-          p="20px"
-          me={{ base: '30px', md: 'unset' }}
-          borderRadius="20px"
-          bg={menuBg}
-          border="none"
-          mt="22px"
-        >
-          <Image src={navImage} borderRadius="16px" mb="28px" />
-          <Flex flexDirection="column">
-            <Link w="100%" href="https://horizon-ui.com/pro">
-              <Button w="100%" h="44px" mb="10px" variant="brand">
-                Buy Horizon UI PRO
-              </Button>
-            </Link>
-            <Link w="100%" href="https://horizon-ui.com/documentation">
-              <Button
-                w="100%"
-                h="44px"
-                mb="10px"
-                border="1px solid"
-                bg="transparent"
-                borderColor={borderButton}
-              >
-                See Documentation
-              </Button>
-            </Link>
-          </Flex>
-        </MenuList>
-      </Menu>
-
-      {/* Theme Toggle Button */}
-      <Button
-        variant="no-hover"
-        bg="transparent"
-        p="0px"
-        minW="unset"
-        h="18px"
-        w="max-content"
+      <Flex
+        alignItems="center"
+        justifyContent="center"
+        cursor="pointer"
+        ms="10px"
         onClick={toggleColorMode}
       >
-        <Icon
-          me="10px"
-          h="18px"
-          w="18px"
-          color={navbarIcon}
-          as={colorMode === 'light' ? IoMdMoon : IoMdSunny}
-        />
-      </Button>
+        {colorMode === 'light' ? (
+          <IoMdMoon color={navbarIcon} width="18px" height="18px" />
+        ) : (
+          <IoMdSunny color={navbarIcon} width="18px" height="18px" />
+        )}
+      </Flex>
 
-      {/* Profile Menu */}
       <Menu>
-        <MenuButton p="0px">
-          <Avatar
-            _hover={{ cursor: 'pointer' }}
+        <MenuButton p="0px" ms="15px">
+          <Flex
+            align="center"
+            justify="center"
+            bg="#249758"
             color="white"
-            name={userName} // Initials automatically based on user's name
-            bg="#11047A"
-            size="sm"
+            borderRadius="50%"
             w="40px"
             h="40px"
-          />
+            fontWeight="bold"
+            fontSize="sm"
+          >
+            U
+          </Flex>
         </MenuButton>
         <MenuList
           boxShadow={shadow}
@@ -285,12 +96,12 @@ export default function HeaderLinks(props) {
               pb="10px"
               w="100%"
               borderBottom="1px solid"
-              borderColor={borderColor}
+              borderColor={useColorModeValue('gray.100', 'whiteAlpha.100')}
               fontSize="sm"
               fontWeight="700"
-              color={textColor}
+              color={useColorModeValue('navy.700', 'white')}
             >
-              👋&nbsp; Hey, {userName}
+              👋&nbsp; Hey, User
             </Text>
           </Flex>
           <Flex flexDirection="column" p="10px">
@@ -299,9 +110,12 @@ export default function HeaderLinks(props) {
               _focus={{ bg: 'none' }}
               borderRadius="8px"
               px="14px"
+              onClick={() => navigate('/user/profile')}
             >
               <Text fontSize="sm">Profile Settings</Text>
             </MenuItem>
+
+            {/* 4. Logout Button par onClick lagaya */}
             <MenuItem
               _hover={{ bg: 'none' }}
               _focus={{ bg: 'none' }}
@@ -310,8 +124,8 @@ export default function HeaderLinks(props) {
               px="14px"
               onClick={handleLogout}
             >
-              <Text fontSize="sm" fontWeight="700">
-                Log out
+              <Text fontSize="sm" fontWeight="bold">
+                Log Out
               </Text>
             </MenuItem>
           </Flex>
@@ -320,10 +134,3 @@ export default function HeaderLinks(props) {
     </Flex>
   );
 }
-
-HeaderLinks.propTypes = {
-  variant: PropTypes.string,
-  fixed: PropTypes.bool,
-  secondary: PropTypes.bool,
-  onOpen: PropTypes.func,
-};

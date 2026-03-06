@@ -1,5 +1,5 @@
 /* eslint-disable */
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
 import {
   Box,
   Flex,
@@ -21,9 +21,10 @@ import {
   Divider,
   Link,
   Icon,
+  Select,
 } from '@chakra-ui/react';
-import api from '../../../utils/axiosConfig';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import MarkerClusterGroup from 'react-leaflet-markercluster';
 import {
   MdWbSunny,
   MdAir,
@@ -32,125 +33,170 @@ import {
   MdPublic,
   MdFactory,
   MdOpenInNew,
+  MdSync,
+  MdLocationOn,
 } from 'react-icons/md';
 import L from 'leaflet';
 import { renderToStaticMarkup } from 'react-dom/server';
+import api from '../../../utils/axiosConfig';
 import 'leaflet/dist/leaflet.css';
 
-// --- CSS Fix: Specific Z-Index for Header Overlap & Layout ---
+const BRAND_GREEN = '#048E3D';
+
 const customStyles = `
-  .leaflet-container {
-    z-index: 0 !important;
+  .leaflet-container { z-index: 0 !important; font-family: 'Inter', sans-serif !important; border-radius: 18px; }
+  .custom-m { background: none !important; border: none !important; }
+  
+  .marker-cluster-small div, .marker-cluster-medium div, .marker-cluster-large div {
+    background-color: ${BRAND_GREEN} !important; color: white !important; 
+    font-weight: 700 !important; border-radius: 50% !important; 
+    font-size: 11px !important; display: flex !important;
+    align-items: center !important; justify-content: center !important;
+    width: 32px !important; height: 32px !important;
   }
-  .leaflet-pane {
-    z-index: 0 !important;
+  .marker-cluster-small, .marker-cluster-medium, .marker-cluster-large {
+    background-color: rgba(4, 142, 61, 0.2) !important; border-radius: 50% !important;
   }
-  .custom-m {
-    background: none !important;
-    border: none !important;
+
+  .leaflet-popup-content-wrapper { 
+    border-radius: 12px !important; 
+    min-width: 260px !important; 
+    box-shadow: 0 8px 25px rgba(0,0,0,0.2) !important;
   }
-  .leaflet-popup-content-wrapper {
-    border-radius: 15px !important;
-    padding: 5px !important;
-  }
+  .leaflet-popup-content { margin: 15px !important; }
+
+  @keyframes spin { 100% { transform: rotate(360deg); } }
+  .spin-icon { animation: spin 2s linear infinite; }
 `;
 
-const getTechConfig = (techName, isRE100Flag) => {
-  const tech = String(techName || '').toLowerCase();
-  const isRenewableTech =
-    tech.includes('solar') ||
-    tech.includes('wind') ||
-    tech.includes('hydro') ||
-    tech.includes('biomass') ||
-    tech.includes('geothermal') ||
-    tech.includes('renewable');
-
-  const isRE =
-    isRE100Flag === true ||
-    String(isRE100Flag).toLowerCase() === 'true' ||
-    isRenewableTech;
-
-  if (!isRE) return { icon: MdFactory, color: '#4A5568', label: 'Non-RE' };
-  if (tech.includes('solar'))
-    return { icon: MdWbSunny, color: '#FFB302', label: 'Solar' };
-  if (tech.includes('wind'))
-    return { icon: MdAir, color: '#3182CE', label: 'Wind' };
-  if (tech.includes('hydro'))
-    return { icon: MdWaterDrop, color: '#00B5D8', label: 'Hydro' };
-  if (tech.includes('biomass'))
-    return { icon: MdForest, color: '#38A169', label: 'Biomass' };
-  return { icon: MdPublic, color: '#805AD5', label: 'RE-100' };
+const countryCoordinates = {
+  India: [20.5937, 78.9629],
+  'Sri Lanka': [7.8731, 80.7718],
+  Vietnam: [14.0583, 108.2772],
+  Thailand: [15.87, 100.9925],
+  Brazil: [-14.235, -51.9253],
+  Turkey: [38.9637, 35.2433],
+  China: [35.8617, 104.1954],
+  'United Arab Emirates': [23.4241, 53.8478],
 };
 
-const createLeafletIcon = (techName, isRE100) => {
-  const config = getTechConfig(techName, isRE100);
+const getTechConfig = (techName) => {
+  const tech = String(techName || '').toLowerCase();
+  if (tech.includes('solar')) return { icon: MdWbSunny, color: '#F6AD55' };
+  if (tech.includes('wind')) return { icon: MdAir, color: '#4299E1' };
+  if (tech.includes('hydro')) return { icon: MdWaterDrop, color: '#3182CE' };
+  if (tech.includes('biomass')) return { icon: MdForest, color: BRAND_GREEN };
+  return { icon: MdPublic, color: BRAND_GREEN };
+};
+
+const createLeafletIcon = (techName) => {
+  const config = getTechConfig(techName);
   const iconHTML = renderToStaticMarkup(
     <div
       style={{
         color: 'white',
-        backgroundColor: config.color,
+        backgroundColor: config.color || BRAND_GREEN,
         borderRadius: '50%',
-        width: '26px',
-        height: '26px',
+        width: '28px',
+        height: '28px',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         border: '2px solid white',
-        boxShadow: '0 2px 5px rgba(0,0,0,0.3)',
+        boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
       }}
     >
-      <config.icon size={16} />
+      <config.icon size={14} />
     </div>,
   );
   return L.divIcon({
     html: iconHTML,
     className: 'custom-m',
-    iconSize: [26, 26],
-    iconAnchor: [13, 13],
+    iconSize: [28, 28],
+    iconAnchor: [14, 14],
   });
 };
 
 export default function UserMarketDashboard() {
   const [allData, setAllData] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
+  const [isSyncing, setIsSyncing] = useState(false);
   const [activeFilter, setActiveFilter] = useState('All');
+  const [countryFilter, setCountryFilter] = useState('All');
+  const mapRef = useRef(null);
 
   const bg = useColorModeValue('#F4F7FE', '#0B1437');
   const cardBg = useColorModeValue('white', '#111C44');
-  const textColor = useColorModeValue('gray.800', 'white');
+  const tableHeadBg = useColorModeValue('gray.50', '#1B254B');
   const borderColor = useColorModeValue('gray.100', '#222E5F');
+  const textColor = useColorModeValue('gray.700', 'white');
 
   useEffect(() => {
-    const fetchData = async (page = 1) => {
+    let isMounted = true;
+    const fetchInChunks = async () => {
+      setIsSyncing(true);
       try {
-        const res = await api.get(`/irec/all-data?page=${page}&limit=400`);
-        if (res.data.success) {
-          const processed = res.data.data
-            .map((p) => {
-              const config = getTechConfig(p.technology, p.isRE100);
-              return {
+        let page = 1;
+        let hasMore = true;
+        while (hasMore && page <= 25) {
+          const res = await api.get(`/irec/all-data?page=${page}&limit=1000`);
+          if (res.data.success && isMounted) {
+            const processed = res.data.data
+              .map((p) => ({
                 ...p,
                 fLat: parseFloat(p.latitude),
                 fLng: parseFloat(p.longitude),
-                isRE: config.label !== 'Non-RE',
+                isRE: /solar|wind|hydro|biomass|renewable/.test(
+                  String(p.technology).toLowerCase(),
+                ),
                 totalVol: (p.issuances || []).reduce(
                   (acc, curr) => acc + (Number(curr.issuanceVolume) || 0),
                   0,
                 ),
-              };
-            })
-            .filter((p) => !isNaN(p.fLat) && !isNaN(p.fLng));
+              }))
+              .filter((p) => !isNaN(p.fLat) && !isNaN(p.fLng));
 
-          setAllData((prev) => [...prev, ...processed]);
-          if (page === 1) setLoading(false);
-          if (res.data.hasMore) fetchData(page + 1);
+            setAllData((prev) => [...prev, ...processed]);
+            if (page === 1) setIsInitialLoading(false);
+            hasMore = res.data.hasMore;
+            page++;
+          } else break;
         }
       } catch (err) {
-        setLoading(false);
+        console.error(err);
       }
+      if (isMounted) setIsSyncing(false);
     };
-    fetchData();
+    fetchInChunks();
+    return () => {
+      isMounted = false;
+    };
   }, []);
+
+  const handleCountryChange = (e) => {
+    const country = e.target.value;
+    setCountryFilter(country);
+    if (mapRef.current) {
+      if (country === 'All') {
+        mapRef.current.setView([20, 30], 3);
+      } else if (countryCoordinates[country]) {
+        mapRef.current.flyTo(countryCoordinates[country], 5, { duration: 1.5 });
+      } else {
+        const firstP = allData.find((p) => p.country === country);
+        if (firstP)
+          mapRef.current.flyTo([firstP.fLat, firstP.fLng], 5, {
+            duration: 1.5,
+          });
+      }
+    }
+  };
+
+  const countries = useMemo(() => {
+    const list = [...new Set(allData.map((item) => item.country))]
+      .filter(Boolean)
+      .sort();
+    return ['All', ...list];
+  }, [allData]);
 
   const filteredData = useMemo(() => {
     let data = [...allData];
@@ -160,272 +206,341 @@ export default function UserMarketDashboard() {
       data = data.filter((p) =>
         (p.technology || '').toLowerCase().includes(activeFilter.toLowerCase()),
       );
+    if (countryFilter !== 'All')
+      data = data.filter((p) => p.country === countryFilter);
     return data.sort((a, b) => b.totalVol - a.totalVol);
-  }, [allData, activeFilter]);
+  }, [allData, activeFilter, countryFilter]);
 
-  const globalTopProducers = useMemo(() => {
-    return [...allData].sort((a, b) => b.totalVol - a.totalVol).slice(0, 15);
+  const top10Leaders = useMemo(() => {
+    return [...allData].sort((a, b) => b.totalVol - a.totalVol).slice(0, 10);
   }, [allData]);
 
-  if (loading)
+  if (isInitialLoading)
     return (
       <Flex justify="center" h="100vh" align="center" bg={bg}>
-        <Spinner size="xl" color="blue.500" />
+        <Spinner size="xl" color={BRAND_GREEN} />
       </Flex>
     );
 
   return (
-    <Box pt="80px" px="20px" bg={bg} minH="100vh" pb="40px" position="relative">
+    <Box
+      pt={{ base: '60px', md: '80px' }}
+      px={{ base: '10px', md: '20px' }}
+      bg={bg}
+      minH="100vh"
+      pb="40px"
+      color={textColor}
+    >
       <style>{customStyles}</style>
 
-      {/* --- Filters --- */}
+      {/* --- Filter & Header Line --- */}
       <Card
         bg={cardBg}
-        p="15px"
+        p="12px"
         mb="20px"
-        borderRadius="20px"
+        borderRadius="15px"
         border="1px solid"
         borderColor={borderColor}
+        shadow="sm"
       >
-        <HStack spacing="3" wrap="wrap">
-          {[
-            'All',
-            'RE-100',
-            'Non-RE100',
-            'Solar',
-            'Wind',
-            'Hydro',
-            'Biomass',
-          ].map((f) => (
-            <Button
-              key={f}
+        <Flex justify="space-between" align="center" wrap="wrap" gap="15px">
+          <HStack spacing="2" wrap="wrap">
+            {[
+              'All',
+              'RE-100',
+              'Non-RE100',
+              'Solar',
+              'Wind',
+              'Hydro',
+              'Biomass',
+            ].map((f) => (
+              <Button
+                key={f}
+                size="xs"
+                variant={activeFilter === f ? 'solid' : 'outline'}
+                bg={activeFilter === f ? BRAND_GREEN : 'transparent'}
+                color={activeFilter === f ? 'white' : BRAND_GREEN}
+                borderColor={BRAND_GREEN}
+                _hover={{ bg: BRAND_GREEN, color: 'white' }}
+                onClick={() => setActiveFilter(f)}
+                borderRadius="8px"
+              >
+                {f}
+              </Button>
+            ))}
+          </HStack>
+
+          <HStack spacing="3">
+            <Select
+              maxW={{ base: '140px', md: '200px' }}
               size="xs"
-              variant={activeFilter === f ? 'solid' : 'outline'}
-              colorScheme="blue"
-              onClick={() => setActiveFilter(f)}
               borderRadius="8px"
+              value={countryFilter}
+              onChange={handleCountryChange}
+              borderColor={borderColor}
             >
-              {f}
-            </Button>
-          ))}
-        </HStack>
+              {countries.map((c) => (
+                <option key={c} value={c} style={{ color: 'black' }}>
+                  {c === 'All' ? '🌐 All Countries' : c}
+                </option>
+              ))}
+            </Select>
+            {isSyncing && (
+              <HStack spacing={1}>
+                <Icon
+                  as={MdSync}
+                  className="spin-icon"
+                  color={BRAND_GREEN}
+                  boxSize="14px"
+                />
+                <Text
+                  fontSize="10px"
+                  fontWeight="bold"
+                  color={BRAND_GREEN}
+                  display={{ base: 'none', sm: 'block' }}
+                >
+                  {allData.length} Records
+                </Text>
+              </HStack>
+            )}
+          </HStack>
+        </Flex>
       </Card>
 
       <SimpleGrid columns={{ base: 1, lg: 4 }} spacing="20px" mb="20px">
-        {/* --- Map --- */}
-        <Box gridColumn={{ lg: 'span 3' }} position="relative" zIndex={0}>
+        {/* --- Map Section --- */}
+        <Box gridColumn={{ lg: 'span 3' }}>
           <Card
             bg={cardBg}
-            p="10px"
+            p="6px"
             borderRadius="24px"
             border="1px solid"
             borderColor={borderColor}
           >
-            <Box height="70vh" borderRadius="20px" overflow="hidden">
+            <Box
+              height={{ base: '50vh', md: '68vh' }}
+              borderRadius="18px"
+              overflow="hidden"
+            >
               <MapContainer
-                center={[15, 20]}
-                zoom={3}
+                center={[20, 77]}
+                zoom={4}
                 style={{ height: '100%', width: '100%' }}
-                preferCanvas={true}
+                ref={mapRef}
               >
                 <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-                {filteredData.map((plant) => (
-                  <Marker
-                    key={plant._id}
-                    position={[plant.fLat, plant.fLng]}
-                    icon={createLeafletIcon(plant.technology, plant.isRE100)}
-                    eventHandlers={{ mouseover: (e) => e.target.openPopup() }}
-                  >
-                    <Popup maxWidth={280} autoPan={false} closeButton={false}>
-                      <VStack align="stretch" spacing={2} p={1}>
-                        <Link
-                          href={`https://evident.app/IREC/device-register/${plant.plantCode}`}
-                          isExternal
-                          fontWeight="bold"
-                          fontSize="md"
-                          color="blue.600"
-                          display="flex"
-                          alignItems="center"
-                        >
-                          {plant.plantCode}{' '}
-                          <Icon as={MdOpenInNew} ml={2} boxSize={4} />
-                        </Link>
-
-                        <HStack spacing={2}>
-                          <Badge colorScheme={plant.isRE ? 'green' : 'gray'}>
-                            {plant.isRE ? 'RE-100' : 'Non-RE'}
-                          </Badge>
-                          <Text fontSize="xs" fontWeight="600" color="gray.600">
-                            {plant.technology}
-                          </Text>
-                        </HStack>
-
-                        <Divider />
-
-                        {/* --- Issuance History Table in Popup --- */}
-                        <Text
-                          fontWeight="bold"
-                          fontSize="9px"
-                          color="gray.400"
-                          letterSpacing="wider"
-                        >
-                          ISSUANCE HISTORY
-                        </Text>
-                        <Box
-                          maxH="120px"
-                          overflowY="auto"
-                          border="1px solid"
-                          borderColor="gray.50"
-                          borderRadius="md"
-                        >
-                          <Table size="xs" variant="simple">
-                            <Tbody>
-                              {(plant.issuances || [])
-                                .sort((a, b) => b.issuingYear - a.issuingYear)
-                                .map((v, i) => (
-                                  <Tr key={i}>
-                                    <Td p={1} fontSize="10px">
-                                      {v.issuingYear}
-                                    </Td>
-                                    <Td
-                                      p={1}
-                                      fontSize="10px"
-                                      isNumeric
-                                      fontWeight="bold"
-                                      color="blue.700"
-                                    >
-                                      {Math.round(
-                                        v.issuanceVolume || 0,
-                                      ).toLocaleString()}
-                                    </Td>
-                                  </Tr>
-                                ))}
-                            </Tbody>
-                          </Table>
-                        </Box>
-
-                        <Flex
-                          justify="space-between"
-                          bg="blue.50"
-                          p={2}
-                          borderRadius="md"
-                          align="center"
-                        >
-                          <Text
+                <MarkerClusterGroup
+                  showCoverageOnHover={false}
+                  maxClusterRadius={45}
+                >
+                  {filteredData.map((plant) => (
+                    <Marker
+                      key={plant._id}
+                      position={[plant.fLat, plant.fLng]}
+                      icon={createLeafletIcon(plant.technology)}
+                    >
+                      <Popup>
+                        <VStack align="stretch" spacing={3}>
+                          <Box>
+                            <Text
+                              fontWeight="800"
+                              fontSize="13px"
+                              color={BRAND_GREEN}
+                              lineHeight="1.2"
+                            >
+                              {plant.company || 'Unnamed Device'}
+                            </Text>
+                            <Text
+                              fontSize="10px"
+                              color="gray.500"
+                              mt={1}
+                              fontWeight="bold"
+                            >
+                              Code: {plant.plantCode}
+                            </Text>
+                          </Box>
+                          <Link
+                            href={`https://evident.app/IREC/device-register/${plant.plantCode}`}
+                            isExternal
+                            color={BRAND_GREEN}
+                            fontSize="10px"
                             fontWeight="bold"
-                            fontSize="xs"
-                            color="blue.700"
+                            borderBottom="1px solid"
+                            borderColor="green.100"
+                            pb={1}
+                            _hover={{
+                              textDecoration: 'none',
+                              color: 'green.700',
+                            }}
                           >
-                            Total Lifecycle:
-                          </Text>
-                          <Text
-                            fontWeight="extrabold"
-                            fontSize="xs"
-                            color="blue.900"
+                            VIEW ON EVIDENT <Icon as={MdOpenInNew} />
+                          </Link>
+                          <Box maxH="120px" overflowY="auto">
+                            <Table size="xs" variant="simple">
+                              <Tbody>
+                                {(plant.issuances || [])
+                                  .slice(0, 5)
+                                  .map((v, i) => (
+                                    <Tr key={i}>
+                                      <Td
+                                        p={1}
+                                        fontSize="10px"
+                                        fontWeight="500"
+                                      >
+                                        {v.issuingYear}
+                                      </Td>
+                                      <Td
+                                        p={1}
+                                        fontSize="10px"
+                                        isNumeric
+                                        fontWeight="700"
+                                        color={BRAND_GREEN}
+                                      >
+                                        {Math.round(
+                                          v.issuanceVolume,
+                                        ).toLocaleString()}
+                                      </Td>
+                                    </Tr>
+                                  ))}
+                              </Tbody>
+                            </Table>
+                          </Box>
+                          <Flex
+                            justify="space-between"
+                            align="center"
+                            pt={1}
+                            borderTop="1px dashed #ddd"
                           >
-                            {Math.round(plant.totalVol).toLocaleString()} MWh
-                          </Text>
-                        </Flex>
-                      </VStack>
-                    </Popup>
-                  </Marker>
-                ))}
+                            <Text fontSize="11px" fontWeight="bold">
+                              Total MWh:
+                            </Text>
+                            <Text
+                              fontSize="12px"
+                              fontWeight="900"
+                              color={BRAND_GREEN}
+                            >
+                              {Math.round(plant.totalVol).toLocaleString()}
+                            </Text>
+                          </Flex>
+                        </VStack>
+                      </Popup>
+                    </Marker>
+                  ))}
+                </MarkerClusterGroup>
               </MapContainer>
             </Box>
           </Card>
         </Box>
 
-        {/* --- Sidebar (Top 15 Global Always) --- */}
+        {/* --- CLEAN SIDEBAR --- */}
         <Card
           bg={cardBg}
-          p="20px"
+          p="15px"
           borderRadius="24px"
-          height="73vh"
-          overflowY="auto"
+          height={{ base: 'auto', lg: '69vh' }}
           border="1px solid"
           borderColor={borderColor}
         >
-          <Text fontWeight="bold" mb="4" fontSize="sm" color={textColor}>
-            Global Leaders (Top 15)
+          <Text
+            fontWeight="800"
+            mb="4"
+            fontSize="10px"
+            color="gray.400"
+            letterSpacing="1px"
+          >
+            GLOBAL LEADERS
           </Text>
-          <VStack align="stretch" spacing={3}>
-            {globalTopProducers.map((p, i) => (
+          <VStack
+            align="stretch"
+            spacing={3}
+            overflowY={{ base: 'visible', lg: 'auto' }}
+          >
+            {top10Leaders.map((p, i) => (
               <Box
                 key={i}
                 p="3"
                 bg={bg}
-                borderRadius="xl"
-                borderLeft="4px solid"
-                borderColor={getTechConfig(p.technology, p.isRE100).color}
+                borderRadius="12px"
+                cursor="pointer"
+                onClick={() => mapRef.current.flyTo([p.fLat, p.fLng], 12)}
+                _hover={{ border: `1px solid ${BRAND_GREEN}` }}
               >
-                <Text fontSize="xs" fontWeight="bold" noOfLines={1}>
-                  {p.plantCode}
+                <Text
+                  fontSize="11px"
+                  fontWeight="800"
+                  color={BRAND_GREEN}
+                  noOfLines={1}
+                >
+                  {p.company || p.plantCode}
                 </Text>
-                <Text fontSize="10px" color="gray.500">
-                  {p.country}
-                </Text>
-                <Text fontSize="xs" fontWeight="bold" color="blue.600">
-                  {Math.round(p.totalVol).toLocaleString()} MWh
-                </Text>
+                <HStack justify="space-between" mt={1}>
+                  <Text fontSize="10px" color="gray.500" fontWeight="bold">
+                    {p.country}
+                  </Text>
+                  <Text fontSize="11px" fontWeight="900" color={textColor}>
+                    {Math.round(p.totalVol).toLocaleString()} MWh
+                  </Text>
+                </HStack>
               </Box>
             ))}
           </VStack>
         </Card>
       </SimpleGrid>
 
-      {/* --- Bottom Table (Top 10 by Technology) --- */}
+      {/* --- Global Table --- */}
       <Card
         bg={cardBg}
-        p="20px"
+        p={{ base: '15px', md: '20px' }}
         borderRadius="24px"
         border="1px solid"
         borderColor={borderColor}
+        shadow="lg"
       >
-        <Text fontWeight="bold" mb="4" fontSize="lg" color={textColor}>
-          Market Leaders: {activeFilter}
+        <Text fontWeight="800" fontSize="md" mb="4" color={BRAND_GREEN}>
+          Global Asset Directory
         </Text>
         <Box overflowX="auto">
           <Table variant="simple" size="sm">
-            <Thead bg={bg}>
+            <Thead bg={tableHeadBg}>
               <Tr>
-                <Th>Rank</Th>
-                <Th>Plant Code</Th>
-                <Th>Country</Th>
-                <Th>Technology</Th>
-                <Th isNumeric>Volume (MWh)</Th>
-                <Th>Certification</Th>
+                <Th fontSize="10px">Rank</Th>
+                <Th fontSize="10px">Asset Name</Th>
+                <Th fontSize="10px">Country</Th>
+                <Th fontSize="10px">Technology</Th>
+                <Th isNumeric fontSize="10px">
+                  I-REC Volume
+                </Th>
               </Tr>
             </Thead>
             <Tbody>
-              {filteredData.slice(0, 10).map((p, idx) => (
+              {filteredData.slice(0, 30).map((p, idx) => (
                 <Tr
                   key={p._id}
-                  _hover={{
-                    bg: useColorModeValue('gray.50', 'whiteAlpha.100'),
-                  }}
+                  cursor="pointer"
+                  onClick={() => mapRef.current.flyTo([p.fLat, p.fLng], 12)}
+                  _hover={{ bg: useColorModeValue('gray.50', 'whiteAlpha.50') }}
                 >
-                  <Td fontWeight="bold" color="blue.500">
+                  <Td fontWeight="900" color={BRAND_GREEN}>
                     #{idx + 1}
                   </Td>
                   <Td>
-                    <Link
-                      href={`https://evident.app/IREC/device-register/${p.plantCode}`}
-                      isExternal
-                      fontWeight="bold"
-                      color="blue.600"
+                    <Text fontWeight="700" fontSize="11px">
+                      {p.company || 'N/A'}
+                    </Text>
+                  </Td>
+                  <Td fontSize="11px">{p.country}</Td>
+                  <Td fontSize="10px">
+                    <Badge
+                      variant="outline"
+                      colorScheme="green"
+                      color={BRAND_GREEN}
+                      borderColor={BRAND_GREEN}
                     >
-                      {p.plantCode}
-                    </Link>
-                  </Td>
-                  <Td>{p.country}</Td>
-                  <Td>{p.technology}</Td>
-                  <Td isNumeric fontWeight="bold">
-                    {Math.round(p.totalVol).toLocaleString()}
-                  </Td>
-                  <Td>
-                    <Badge colorScheme={p.isRE ? 'green' : 'gray'}>
-                      {p.isRE ? 'RE-100' : 'NON-RE'}
+                      {p.technology}
                     </Badge>
+                  </Td>
+                  <Td isNumeric fontWeight="800" fontSize="11px">
+                    {Math.round(p.totalVol).toLocaleString()}
                   </Td>
                 </Tr>
               ))}

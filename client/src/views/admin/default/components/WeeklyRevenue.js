@@ -35,6 +35,7 @@ export default function MarketNewsFeed(props) {
   const brandColor = '#4318FF';
   const bgCard = useColorModeValue('white', 'navy.800');
   const bgItem = useColorModeValue('gray.50', 'whiteAlpha.100');
+  const brandGreen = '#19944D';
 
   useEffect(() => {
     const fetchNews = async () => {
@@ -71,7 +72,7 @@ export default function MarketNewsFeed(props) {
       <Flex align="center" w="100%" mb="20px" px="5px">
         <Icon
           as={MdOutlineNewspaper}
-          color={brandColor}
+          color={brandGreen}
           w="24px"
           h="24px"
           me="10px"
@@ -126,7 +127,7 @@ export default function MarketNewsFeed(props) {
                     me="15px"
                   />
                   <VStack align="start" spacing="0" flex="1">
-                    <Text fontSize="10px" fontWeight="800" color={brandColor}>
+                    <Text fontSize="10px" fontWeight="800" color={brandGreen}>
                       {article.author || 'GLOBAL UPDATE'}
                     </Text>
                     <Text

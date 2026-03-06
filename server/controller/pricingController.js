@@ -17,7 +17,6 @@ exports.uploadMarketPricing = async (req, res) => {
     // 2. DUPLICATE CHECK: Same mahine ka purana data delete
     if (uploadMonth) {
       await Pricing.deleteMany({ Month: uploadMonth });
-      console.log(`🧹 Purana data for ${uploadMonth} cleaned up.`);
     }
 
     // 3. Data Mapping - 'Type' ko 'Technology' mein map karna

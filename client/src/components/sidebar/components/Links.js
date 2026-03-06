@@ -1,7 +1,18 @@
 /* eslint-disable */
 import React, { useContext } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
-import { Box, Flex, HStack, Text, useColorModeValue } from '@chakra-ui/react';
+import {
+  Box,
+  Flex,
+  HStack,
+  Text,
+  useColorModeValue,
+  Accordion,
+  AccordionItem,
+  AccordionButton,
+  AccordionPanel,
+  AccordionIcon,
+} from '@chakra-ui/react';
 import { SidebarContext } from 'contexts/SidebarContext';
 
 export function SidebarLinks(props) {
@@ -12,159 +23,104 @@ export function SidebarLinks(props) {
     'secondaryGray.600',
   );
   let activeIcon = useColorModeValue('brand.500', 'white');
-  let textColor = useColorModeValue('secondaryGray.500', 'white');
-  let brandColor = useColorModeValue('brand.500', 'brand.400');
+  let brandColor = '#249758';
 
   const { routes } = props;
-
-  // Sidebar ki toggle state nikaalein
   const { toggleSidebar } = useContext(SidebarContext);
 
-  // --- ROLE BASED LOGIC ---
   const userData = localStorage.getItem('user');
-  let userRole = 'user';
-  if (userData) {
-    try {
-      const parsedUser = JSON.parse(userData);
-      userRole = parsedUser.role || 'user';
-    } catch (e) {
-      console.error('Error parsing user role', e);
-    }
-  }
+  let userRole = (userData ? JSON.parse(userData).role : 'user').toLowerCase();
 
-  const activeRoute = (routeName) => {
-    return location.pathname.includes(routeName);
-  };
+  const activeRoute = (routeName) =>
+    location.pathname.includes(routeName.toLowerCase());
 
-  const createLinks = (routes) => {
-    return routes
-      .filter((route) => {
-        if (route.roles) {
-          return route.roles.includes(userRole);
-        }
-        return true;
-      })
-      .map((route, index) => {
-        if (route.layout === '/auth') {
-          return null;
-        }
+  // --- Normal Link Render (Home, Carbon, etc.) ---
+  const renderSingleLink = (route, index) => (
+    <NavLink key={index} to={route.layout + route.path}>
+      <Box>
+        <HStack
+          spacing={activeRoute(route.path) ? '22px' : '26px'}
+          py="5px"
+          ps="10px"
+        >
+          <Flex w="100%" alignItems="center">
+            <Box
+              color={activeRoute(route.path) ? activeIcon : inactiveColor}
+              me={toggleSidebar ? '0px' : '18px'}
+            >
+              {route.icon}
+            </Box>
+            <Text
+              display={toggleSidebar ? 'none' : 'block'}
+              me="auto"
+              color={activeRoute(route.path) ? activeColor : inactiveColor}
+              fontWeight={activeRoute(route.path) ? 'bold' : '500'}
+            >
+              {route.name}
+            </Text>
+          </Flex>
+          <Box
+            h="36px"
+            w="4px"
+            bg={activeRoute(route.path) ? brandColor : 'transparent'}
+            borderRadius="5px"
+          />
+        </HStack>
+      </Box>
+    </NavLink>
+  );
 
-        if (route.category) {
-          return (
-            <React.Fragment key={index}>
-              {!toggleSidebar && (
-                <Text
-                  fontSize={'md'}
-                  color={activeColor}
-                  fontWeight="bold"
-                  mx="auto"
-                  ps={{ sm: '10px', xl: '16px' }}
-                  pt="18px"
-                  pb="12px"
-                >
-                  {route.name}
-                </Text>
-              )}
-              {createLinks(route.items)}
-            </React.Fragment>
-          );
-        }
+  const createLinks = (routesList) => {
+    return routesList.map((route, index) => {
+      // Role Check logic
+      const isRoleAllowed = route.roles
+        ? route.roles.map((r) => r.toLowerCase()).includes(userRole)
+        : true;
+      if (!isRoleAllowed) return null;
 
-        // --- FIXED LINE BELOW: Added /user layout check ---
-        else if (
-          route.layout === '/admin' ||
-          route.layout === '/user' ||
-          route.layout === '/rtl'
-        ) {
-          return (
-            <NavLink key={index} to={route.layout + route.path}>
-              {route.icon ? (
-                <Box>
-                  <HStack
-                    spacing={
-                      activeRoute(route.path.toLowerCase()) ? '22px' : '26px'
-                    }
-                    py="5px"
-                    ps="10px"
+      // CASE 1: AGAR GROUP HAI (I-Recs)
+      if (route.isGroup) {
+        return (
+          <Accordion allowToggle key={index} variant="unstyled" w="100%">
+            <AccordionItem border="none">
+              <AccordionButton
+                py="12px"
+                ps="10px"
+                _hover={{ bg: 'none' }}
+                _focus={{ boxShadow: 'none' }}
+              >
+                <Flex w="100%" alignItems="center">
+                  <Box
+                    color={inactiveColor}
+                    me={toggleSidebar ? '0px' : '18px'}
                   >
-                    <Flex w="100%" alignItems="center" justifyContent="center">
-                      <Box
-                        color={
-                          activeRoute(route.path.toLowerCase())
-                            ? activeIcon
-                            : textColor
-                        }
-                        me={toggleSidebar ? '0px' : '18px'}
-                      >
-                        {route.icon}
-                      </Box>
-
-                      <Text
-                        display={toggleSidebar ? 'none' : 'block'}
-                        me="auto"
-                        color={
-                          activeRoute(route.path.toLowerCase())
-                            ? activeColor
-                            : textColor
-                        }
-                        fontWeight={
-                          activeRoute(route.path.toLowerCase())
-                            ? 'bold'
-                            : 'normal'
-                        }
-                      >
+                    {route.icon}
+                  </Box>
+                  {!toggleSidebar && (
+                    <>
+                      <Text color={inactiveColor} fontWeight="500" me="auto">
                         {route.name}
                       </Text>
-                    </Flex>
+                      <AccordionIcon color={inactiveColor} />
+                    </>
+                  )}
+                </Flex>
+              </AccordionButton>
+              <AccordionPanel ps={toggleSidebar ? '0px' : '30px'} pb="10px">
+                {/* I-Recs ke andar wale items */}
+                {createLinks(route.items)}
+              </AccordionPanel>
+            </AccordionItem>
+          </Accordion>
+        );
+      }
 
-                    <Box
-                      h="36px"
-                      w="4px"
-                      bg={
-                        activeRoute(route.path.toLowerCase())
-                          ? brandColor
-                          : 'transparent'
-                      }
-                      borderRadius="5px"
-                    />
-                  </HStack>
-                </Box>
-              ) : (
-                <Box>
-                  <HStack
-                    spacing={
-                      activeRoute(route.path.toLowerCase()) ? '22px' : '26px'
-                    }
-                    py="5px"
-                    ps="10px"
-                  >
-                    <Text
-                      display={toggleSidebar ? 'none' : 'block'}
-                      me="auto"
-                      color={
-                        activeRoute(route.path.toLowerCase())
-                          ? activeColor
-                          : inactiveColor
-                      }
-                      fontWeight={
-                        activeRoute(route.path.toLowerCase())
-                          ? 'bold'
-                          : 'normal'
-                      }
-                    >
-                      {route.name}
-                    </Text>
-                    <Box h="36px" w="4px" bg="brand.400" borderRadius="5px" />
-                  </HStack>
-                </Box>
-              )}
-            </NavLink>
-          );
-        }
-      });
+      // CASE 2: AGAR NORMAL ROUTE HAI (Jaise Home ya Carbon Credits)
+      return renderSingleLink(route, index);
+    });
   };
 
-  return createLinks(routes);
+  return <>{createLinks(routes)}</>;
 }
 
 export default SidebarLinks;

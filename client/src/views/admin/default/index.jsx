@@ -34,6 +34,7 @@ export default function UserReports() {
   const brandColor = useColorModeValue('brand.500', 'white');
   const boxBg = useColorModeValue('secondaryGray.300', 'whiteAlpha.100');
   const marqueeBg = useColorModeValue('brand.500', 'navy.700');
+  const brandGreen = '#19944D';
 
   useEffect(() => {
     const fetchDashboardData = async () => {
@@ -93,7 +94,7 @@ export default function UserReports() {
     <Box pt={{ base: '130px', md: '80px', xl: '80px' }}>
       {/* --- NEW NEWS MARQUEE SECTION --- */}
       <Box
-        bg={marqueeBg}
+        bg={brandGreen}
         color="white"
         py="10px"
         borderRadius="15px"
@@ -107,15 +108,15 @@ export default function UserReports() {
         <Flex
           px="20px"
           alignItems="center"
-          bg={marqueeBg}
+          bg={brandGreen}
           zIndex="2"
           position="absolute"
           left="0"
           fontWeight="bold"
         >
           <Icon as={MdNotificationsActive} mr="10px" />
-          <Text whiteSpace="nowrap">MARKET UPDATES:</Text>
-          <Box h="20px" w="2px" bg="whiteAlpha.400" mx="15px" />
+          <Text whiteSpace="nowrap">UPDATES:</Text>
+          <Box h="20px" w="2px" bg={brandGreen} mx="15px" />
         </Flex>
 
         <Box
@@ -135,7 +136,7 @@ export default function UserReports() {
       {/* 3 Main Precision Tabs */}
       <SimpleGrid columns={{ base: 1, md: 3 }} gap="20px" mb="20px">
         <MiniStatistics
-          name="Average Price"
+          name="Global Average I-Recs Price"
           value={`$${stats.avgPrice}`}
           startContent={
             <IconBox
@@ -149,7 +150,7 @@ export default function UserReports() {
           }
         />
         <MiniStatistics
-          name="Pricing Markets"
+          name="Current Listed Countries"
           value={stats.pricingCountries}
           startContent={
             <IconBox
