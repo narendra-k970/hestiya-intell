@@ -23,10 +23,8 @@ exports.sendOtp = async (req, res) => {
   }
 
   try {
-    // 1. DATABASE CHECK (Pehle dhoondo)
     const existingUser = await User.findOne({ email: normalizedEmail });
 
-    // AGAR USER MIL GAYA -> Seedha yahan se bahar niklo message ke saath
     if (existingUser) {
       return res.status(400).json({
         success: false,

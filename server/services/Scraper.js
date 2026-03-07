@@ -5,18 +5,15 @@ const cron = require("node-cron");
 const delay = (ms) => new Promise((res) => setTimeout(res, ms));
 
 const scrapeEvidentIssuance = async (country = null) => {
-  // 200 ki limit hata di, ab jitne pending hain sab lega
   console.log(`🚀 Manual Batch Sync Start: Targeting ALL pending plants...`);
 
   try {
-    // ASLI FIX: Query ko null aur undefined dono ke liye check karwaya
     const query = {
       plantCode: { $exists: true, $ne: "" },
       $or: [{ lastSyncAt: null }, { lastSyncAt: { $exists: false } }],
     };
 
     if (country && country !== "All") {
-      // Case-insensitive match taaki "New Zealand" vs "new zealand" ka issue na ho
       query.country = { $regex: new RegExp(`^${country}$`, "i") };
     }
 
@@ -40,7 +37,6 @@ const scrapeEvidentIssuance = async (country = null) => {
       const plant = plants[i];
       const page = await browser.newPage();
 
-      // Memory leak se bachne ke liye image loading disable karein
       await page.setRequestInterception(true);
       page.on("request", (req) => {
         if (req.resourceType() === "image" || req.resourceType() === "font")
