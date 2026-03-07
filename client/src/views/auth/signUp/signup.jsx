@@ -55,6 +55,7 @@ const AuthForm = () => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
+  // --- Updated handleSendOtp in Frontend ---
   const handleSendOtp = async () => {
     setLoading(true);
     try {
@@ -63,25 +64,32 @@ const AuthForm = () => {
       });
 
       toast({
-        title: 'OTP Sent',
-        description: res.data.message,
+        title: 'Success',
+        description: res.data.message || 'OTP Sent Successfully',
         status: 'success',
       });
-      setStep(2); // OTP box dikhane ke liye
+      setStep(2);
     } catch (err) {
-      console.error('Debug Error:', err.response);
-
-      // Backend se aaya hua "Email already registered" yahan pakda jayega
       const serverMessage = err.response?.data?.message;
 
-      toast({
-        title: 'Registration Error',
-        description:
-          serverMessage || 'Connection Error. Please check your server.',
-        status: 'error',
-        duration: 5000,
-        isClosable: true,
-      });
+      // Smart handling for existing unverified users
+      if (
+        serverMessage?.includes('registered') ||
+        serverMessage?.includes('verify')
+      ) {
+        toast({
+          title: 'Account Found',
+          description: 'Please verify the OTP sent to your email to continue.',
+          status: 'info',
+        });
+        setStep(2); // Direct OTP screen par le jao
+      } else {
+        toast({
+          title: 'Registration Error',
+          description: serverMessage || 'Connection Error.',
+          status: 'error',
+        });
+      }
     } finally {
       setLoading(false);
     }

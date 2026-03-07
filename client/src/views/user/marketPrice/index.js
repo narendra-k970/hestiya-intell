@@ -18,7 +18,6 @@ import {
   Td,
   Thead,
   Th,
-  Divider,
   Link,
   Icon,
   Select,
@@ -31,10 +30,8 @@ import {
   MdWaterDrop,
   MdForest,
   MdPublic,
-  MdFactory,
   MdOpenInNew,
   MdSync,
-  MdLocationOn,
 } from 'react-icons/md';
 import L from 'leaflet';
 import { renderToStaticMarkup } from 'react-dom/server';
@@ -44,7 +41,11 @@ import 'leaflet/dist/leaflet.css';
 const BRAND_GREEN = '#048E3D';
 
 const customStyles = `
-  .leaflet-container { z-index: 0 !important; font-family: 'Inter', sans-serif !important; border-radius: 18px; }
+  .leaflet-container { 
+    z-index: 1 !important; 
+    font-family: 'Inter', sans-serif !important; 
+    border-radius: 18px; 
+  }
   .custom-m { background: none !important; border: none !important; }
   
   .marker-cluster-small div, .marker-cluster-medium div, .marker-cluster-large div {
@@ -155,7 +156,6 @@ export default function UserMarketDashboard() {
                 ),
               }))
               .filter((p) => !isNaN(p.fLat) && !isNaN(p.fLng));
-
             setAllData((prev) => [...prev, ...processed]);
             if (page === 1) setIsInitialLoading(false);
             hasMore = res.data.hasMore;
@@ -211,9 +211,10 @@ export default function UserMarketDashboard() {
     return data.sort((a, b) => b.totalVol - a.totalVol);
   }, [allData, activeFilter, countryFilter]);
 
-  const top10Leaders = useMemo(() => {
-    return [...allData].sort((a, b) => b.totalVol - a.totalVol).slice(0, 10);
-  }, [allData]);
+  const top10Leaders = useMemo(
+    () => [...allData].sort((a, b) => b.totalVol - a.totalVol).slice(0, 10),
+    [allData],
+  );
 
   if (isInitialLoading)
     return (
@@ -224,16 +225,18 @@ export default function UserMarketDashboard() {
 
   return (
     <Box
-      pt={{ base: '60px', md: '80px' }}
+      // ISKO DHYAN SE DEKHO: Pt ko thoda aur badhaya hai aur zIndex remove kiya hai
+      pt={{ base: '150px', md: '100px' }}
       px={{ base: '10px', md: '20px' }}
       bg={bg}
       minH="100vh"
       pb="40px"
       color={textColor}
+      overflow="visible"
     >
       <style>{customStyles}</style>
 
-      {/* --- Filter & Header Line --- */}
+      {/* --- Filter Card --- */}
       <Card
         bg={cardBg}
         p="12px"
@@ -244,7 +247,11 @@ export default function UserMarketDashboard() {
         shadow="sm"
       >
         <Flex justify="space-between" align="center" wrap="wrap" gap="15px">
-          <HStack spacing="2" wrap="wrap">
+          <HStack
+            spacing="2"
+            wrap="wrap"
+            justify={{ base: 'center', md: 'start' }}
+          >
             {[
               'All',
               'RE-100',
@@ -261,7 +268,6 @@ export default function UserMarketDashboard() {
                 bg={activeFilter === f ? BRAND_GREEN : 'transparent'}
                 color={activeFilter === f ? 'white' : BRAND_GREEN}
                 borderColor={BRAND_GREEN}
-                _hover={{ bg: BRAND_GREEN, color: 'white' }}
                 onClick={() => setActiveFilter(f)}
                 borderRadius="8px"
               >
@@ -270,7 +276,11 @@ export default function UserMarketDashboard() {
             ))}
           </HStack>
 
-          <HStack spacing="3">
+          <HStack
+            spacing="3"
+            w={{ base: '100%', md: 'auto' }}
+            justify="flex-end"
+          >
             <Select
               maxW={{ base: '140px', md: '200px' }}
               size="xs"
@@ -308,7 +318,6 @@ export default function UserMarketDashboard() {
       </Card>
 
       <SimpleGrid columns={{ base: 1, lg: 4 }} spacing="20px" mb="20px">
-        {/* --- Map Section --- */}
         <Box gridColumn={{ lg: 'span 3' }}>
           <Card
             bg={cardBg}
@@ -318,7 +327,7 @@ export default function UserMarketDashboard() {
             borderColor={borderColor}
           >
             <Box
-              height={{ base: '50vh', md: '68vh' }}
+              height={{ base: '350px', md: '68vh' }}
               borderRadius="18px"
               overflow="hidden"
             >
@@ -368,43 +377,9 @@ export default function UserMarketDashboard() {
                             borderBottom="1px solid"
                             borderColor="green.100"
                             pb={1}
-                            _hover={{
-                              textDecoration: 'none',
-                              color: 'green.700',
-                            }}
                           >
                             VIEW ON EVIDENT <Icon as={MdOpenInNew} />
                           </Link>
-                          <Box maxH="120px" overflowY="auto">
-                            <Table size="xs" variant="simple">
-                              <Tbody>
-                                {(plant.issuances || [])
-                                  .slice(0, 5)
-                                  .map((v, i) => (
-                                    <Tr key={i}>
-                                      <Td
-                                        p={1}
-                                        fontSize="10px"
-                                        fontWeight="500"
-                                      >
-                                        {v.issuingYear}
-                                      </Td>
-                                      <Td
-                                        p={1}
-                                        fontSize="10px"
-                                        isNumeric
-                                        fontWeight="700"
-                                        color={BRAND_GREEN}
-                                      >
-                                        {Math.round(
-                                          v.issuanceVolume,
-                                        ).toLocaleString()}
-                                      </Td>
-                                    </Tr>
-                                  ))}
-                              </Tbody>
-                            </Table>
-                          </Box>
                           <Flex
                             justify="space-between"
                             align="center"
@@ -432,7 +407,6 @@ export default function UserMarketDashboard() {
           </Card>
         </Box>
 
-        {/* --- CLEAN SIDEBAR --- */}
         <Card
           bg={cardBg}
           p="15px"
@@ -487,7 +461,6 @@ export default function UserMarketDashboard() {
         </Card>
       </SimpleGrid>
 
-      {/* --- Global Table --- */}
       <Card
         bg={cardBg}
         p={{ base: '15px', md: '20px' }}
@@ -517,8 +490,10 @@ export default function UserMarketDashboard() {
                 <Tr
                   key={p._id}
                   cursor="pointer"
-                  onClick={() => mapRef.current.flyTo([p.fLat, p.fLng], 12)}
-                  _hover={{ bg: useColorModeValue('gray.50', 'whiteAlpha.50') }}
+                  onClick={() => {
+                    mapRef.current.flyTo([p.fLat, p.fLng], 12);
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }}
                 >
                   <Td fontWeight="900" color={BRAND_GREEN}>
                     #{idx + 1}

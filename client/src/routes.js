@@ -36,7 +36,7 @@ const routes = [
 
   // 3. I-RECS (Dropdown Group)
   {
-    name: 'I-Recs',
+    name: 'I-REC',
     isGroup: true,
     icon: (
       <Icon as={MdUploadFile} width="20px" height="20px" color={brandGreen} />
@@ -57,7 +57,7 @@ const routes = [
         roles: ['admin'],
       },
       {
-        name: 'I-Recs Plants Dashboard',
+        name: 'Global I-REC Intelligence',
         layout: '/user',
         path: '/market-prices',
         icon: (
@@ -83,7 +83,23 @@ const routes = [
     layout: '/user',
     path: '/carbon-credits',
     icon: <Icon as={MdMap} width="20px" height="20px" color={brandGreen} />,
-    component: <div style={{ padding: '20px' }}>Coming Soon...</div>, // Map hata diya
+    component: (
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          height: '100vh',
+          width: '100%',
+          fontSize: '24px',
+          fontWeight: 'bold',
+          color: '#048E3D', // Aapka Brand Green color
+          backgroundColor: '#F4F7FE', // Dashboard ka background color
+        }}
+      >
+        Coming Soon...
+      </div>
+    ),
     roles: ['user', 'admin'],
   },
 

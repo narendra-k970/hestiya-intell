@@ -1,5 +1,5 @@
 /* eslint-disable */
-import React from 'react';
+import React, { useEffect, useState } from 'react'; // useEffect, useState add kiya
 import {
   Flex,
   Menu,
@@ -10,7 +10,7 @@ import {
   useColorModeValue,
   useColorMode,
 } from '@chakra-ui/react';
-import { useNavigate } from 'react-router-dom'; // 1. Navigate import karo
+import { useNavigate } from 'react-router-dom';
 import { SearchBar } from 'components/navbar/searchBar/SearchBar';
 import { SidebarResponsive } from 'components/sidebar/Sidebar';
 import PropTypes from 'prop-types';
@@ -20,7 +20,30 @@ import routes from 'routes.js';
 export default function HeaderLinks(props) {
   const { secondary } = props;
   const { colorMode, toggleColorMode } = useColorMode();
-  const navigate = useNavigate(); // 2. Navigate initialize karo
+  const navigate = useNavigate();
+
+  // --- USER NAME LOGIC ---
+  const [userName, setUserName] = useState('User');
+
+  useEffect(() => {
+    // LocalStorage se user object nikal rahe hain
+    const userStr = localStorage.getItem('user');
+    if (userStr) {
+      try {
+        const user = JSON.parse(userStr);
+        // Agar aapke object mein 'firstName' key hai toh wo set hoga
+        if (user.firstName) {
+          setUserName(user.firstName);
+        } else if (user.name) {
+          // Agar sirf 'name' hai toh uska pehla word le lenge
+          setUserName(user.name.split(' ')[0]);
+        }
+      } catch (err) {
+        console.error('Error parsing user data', err);
+      }
+    }
+  }, []);
+  // -----------------------
 
   const navbarIcon = useColorModeValue('gray.400', 'white');
   const menuBg = useColorModeValue('white', 'navy.800');
@@ -29,12 +52,11 @@ export default function HeaderLinks(props) {
     '14px 17px 40px 4px rgba(112, 144, 176, 0.06)',
   );
 
-  // 3. Logout Logic Function
   const handleLogout = () => {
-    localStorage.clear(); // Saara data delete (token etc.)
+    localStorage.clear();
     sessionStorage.clear();
-    navigate('/auth/sign-in'); // Login page par bhejo (apna path check kar lena)
-    window.location.reload(); // Ek baar refresh taaki state clean ho jaye
+    navigate('/auth/sign-in');
+    window.location.reload();
   };
 
   return (
@@ -48,7 +70,6 @@ export default function HeaderLinks(props) {
       boxShadow={shadow}
     >
       <SearchBar me="10px" borderRadius="30px" />
-
       <SidebarResponsive routes={routes} />
 
       <Flex
@@ -78,7 +99,8 @@ export default function HeaderLinks(props) {
             fontWeight="bold"
             fontSize="sm"
           >
-            U
+            {/* Avatar mein naam ka pehla akshar dikhane ke liye */}
+            {userName.charAt(0).toUpperCase()}
           </Flex>
         </MenuButton>
         <MenuList
@@ -101,7 +123,8 @@ export default function HeaderLinks(props) {
               fontWeight="700"
               color={useColorModeValue('navy.700', 'white')}
             >
-              👋&nbsp; Hey, User
+              {/* Yahan ab dynamically name dikhega */}
+              👋&nbsp; Hey, {userName}
             </Text>
           </Flex>
           <Flex flexDirection="column" p="10px">
@@ -115,7 +138,6 @@ export default function HeaderLinks(props) {
               <Text fontSize="sm">Profile Settings</Text>
             </MenuItem>
 
-            {/* 4. Logout Button par onClick lagaya */}
             <MenuItem
               _hover={{ bg: 'none' }}
               _focus={{ bg: 'none' }}

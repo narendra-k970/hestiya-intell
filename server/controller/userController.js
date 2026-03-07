@@ -3,54 +3,70 @@ const nodemailer = require("nodemailer");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 
+// --- Nodemailer Transporter Setup ---
+const transporter = nodemailer.createTransport({
+  service: "gmail",
+  auth: {
+    user: "connect@hestiya.com",
+    pass: "bcmfmdbnnbikoryk", // Aapka working App Password
+  },
+});
+
 exports.sendOtp = async (req, res) => {
-  const { email } = req.body;
-  if (!email) return res.status(400).json({ message: "Email is required" });
-
-  const normalizedEmail = email.toLowerCase().trim();
-
-  // Domain Block Logic
-  const domain = normalizedEmail.split("@")[1];
-  const blocked = [
-    "gmail.com",
-    "yahoo.com",
-    "hotmail.com",
-    "outlook.com",
-    "icloud.com",
-  ];
-  if (blocked.includes(domain)) {
-    return res.status(400).json({ message: "Only company emails allowed." });
-  }
-
   try {
-    const existingUser = await User.findOne({ email: normalizedEmail });
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ message: "Email is required" });
 
+    // 1. Email ko saf karke normalize karo (Spaces hatao aur lowercase karo)
+    const normalizedEmail = email.trim().toLowerCase();
+
+    // 2. Domain Block Logic
+    const domain = normalizedEmail.split("@")[1];
+    const blocked = [
+      "gmail.com",
+      "yahoo.com",
+      "hotmail.com",
+      "outlook.com",
+      "icloud.com",
+    ];
+    if (blocked.includes(domain)) {
+      return res.status(400).json({ message: "Only company emails allowed." });
+    }
+
+    const existingUser = await User.findOne({ email: normalizedEmail }).lean();
+
+    // AGAR USER MIL GAYA -> Seedha Error, Koi OTP nahi jayega
     if (existingUser) {
+      console.log(
+        "ALERT: Duplicate registration attempt for:",
+        normalizedEmail,
+      );
       return res.status(400).json({
         success: false,
         message: "Email already registered. Please sign in instead.",
       });
     }
 
-    // 2. AGAR USER NAHI MILA -> Tabhi naya record banao
+    // 4. AGAR USER NAHI HAI -> Tabhi aage badhega
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const expiry = new Date(Date.now() + 10 * 60 * 1000);
 
     const newUser = new User({
       email: normalizedEmail,
-      otp,
+      otp: otp,
       otpExpires: expiry,
     });
 
-    // Save logic
+    // 5. Database mein SAVE
     await newUser.save({ validateBeforeSave: false });
+    console.log("SUCCESS: New user saved in DB:", normalizedEmail);
 
-    // 3. EMAIL SENDING
+    // 6. EMAIL SENDING
     await transporter.sendMail({
       from: '"Hestiya Intelligence" <connect@hestiya.com>',
       to: normalizedEmail,
       subject: "Verification Code - Hestiya Intelligence",
-      html: `<h3>Hello, Thank you for choosing Hestiya Intelligence. To secure your account and proceed with your registration, please use the verification code provided below.
+      html: `<h3>Hello, Thank you for choosing Hestiya Intelligence.
       <br/><br/>Your OTP is: <b>${otp}</b></h3>`,
     });
 
@@ -59,8 +75,7 @@ exports.sendOtp = async (req, res) => {
       message: "OTP sent and saved successfully.",
     });
   } catch (err) {
-    console.error("DATABASE ERROR:", err.message);
-    // Agar koi aur error aaye toh crash na ho
+    console.error("CRITICAL ERROR in sendOtp:", err.message);
     return res.status(500).json({
       success: false,
       message: "Server Error",
@@ -84,7 +99,7 @@ exports.verifyOtp = async (req, res) => {
 
     res.json({
       success: true,
-      isKycPending: !user.isKycCompleted, // Check via flag
+      isKycPending: !user.isKycCompleted,
       message: "OTP Verified successfully.",
     });
   } catch (err) {
@@ -95,7 +110,6 @@ exports.verifyOtp = async (req, res) => {
 // --- 3. COMPLETE KYC & SET PASSWORD ---
 exports.completeKycAndSignup = async (req, res) => {
   const { email, password, ...kycData } = req.body;
-
   try {
     const user = await User.findOne({ email: email.toLowerCase() });
     if (!user || !user.isEmailVerified) {
