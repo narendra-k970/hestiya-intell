@@ -24,9 +24,6 @@ export function SearchBar(props) {
     if (e.key === 'Enter') {
       e.preventDefault();
       const query = e.target.value;
-
-      // window.location.pathname se ye pata chalega ki aap abhi kis page par ho
-      // Agar aap Reports par ho toh Reports par search karega, Dashboard par ho toh Dashboard par.
       navigate(`${window.location.pathname}?search=${query}`);
     }
   };

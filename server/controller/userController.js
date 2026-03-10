@@ -192,3 +192,31 @@ exports.login = async (req, res) => {
     res.status(500).json({ message: "Internal Server Error" });
   }
 };
+
+// --- 5. GET USER PROFILE (For Profile Page) ---
+exports.getUserProfile = async (req, res) => {
+  try {
+    // req.user.id 'protect' middleware से आएगा (जो हम नीचे बनाएंगे)
+    const user = await User.findById(req.user.id).select(
+      "-password -otp -otpExpires",
+    );
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    res.json({
+      success: true,
+      user: user,
+    });
+  } catch (err) {
+    console.error("Error fetching user profile:", err.message);
+    res.status(500).json({
+      success: false,
+      message: "Internal Server Error",
+    });
+  }
+};

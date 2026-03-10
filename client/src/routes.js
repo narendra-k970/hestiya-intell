@@ -10,6 +10,7 @@ import IrecManagement from 'views/admin/irecManagement';
 import UserMarketDashboard from 'views/user/marketPrice';
 import MarketPricingUpload from 'views/admin/pricing';
 import MarketMap from 'views/user/price-view';
+import UserProfile from 'views/user/profile';
 
 const brandGreen = '#19944D';
 
@@ -72,6 +73,14 @@ const routes = [
         path: '/price-view',
         icon: <Icon as={MdMap} width="20px" height="20px" color={brandGreen} />,
         component: <MarketMap />,
+        roles: ['user'],
+      },
+      {
+        name: 'User Profile',
+        layout: '/user',
+        path: '/profile',
+        icon: <Icon as={MdMap} width="20px" height="20px" color={brandGreen} />,
+        component: <UserProfile />,
         roles: ['user'],
       },
     ],

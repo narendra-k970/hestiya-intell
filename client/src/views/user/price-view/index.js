@@ -16,7 +16,6 @@ import {
   Icon,
   HStack,
   SimpleGrid,
-  VStack,
 } from '@chakra-ui/react';
 import {
   MdCalendarToday,
@@ -28,150 +27,102 @@ import api from '../../../utils/axiosConfig';
 import axios from 'axios';
 import 'leaflet/dist/leaflet.css';
 
-// --- DATA OBJECT (Wahi jo aapne diya tha) ---
+// Market Sentiment Data
 const marketOverviewData = {
   India: {
     pricing: 'Current pricing for India I-RECs is slightly declining.',
-    outlook: 'Market sentiment remains cautious with limited buying activity.',
-    liquidity: 'High trading activity observed in the market.',
+    outlook: 'Market sentiment remains cautious.',
+    liquidity: 'High trading activity.',
     pStatus: 'DECLINING',
     oStatus: 'CAUTIOUS',
     lStatus: 'HIGH',
   },
   Singapore: {
     pricing: 'Current pricing for Singapore I-RECs remains stable.',
-    outlook: 'Market outlook is stable with balanced demand and supply.',
-    liquidity: 'Low trading activity observed in the market.',
+    outlook: 'Market outlook is stable.',
+    liquidity: 'Low trading activity.',
     pStatus: 'STABLE',
     oStatus: 'STABLE',
     lStatus: 'LOW',
   },
   Vietnam: {
     pricing: 'Current pricing for Vietnam I-RECs remains steady.',
-    outlook: 'Market outlook remains stable with moderate interest.',
-    liquidity: 'Low liquidity observed in the market.',
+    outlook: 'Market outlook remains stable.',
+    liquidity: 'Low liquidity.',
     pStatus: 'STEADY',
     oStatus: 'STABLE',
     lStatus: 'LOW',
   },
   Pakistan: {
     pricing: 'Current pricing for Pakistan I-RECs remains steady.',
-    outlook: 'Market outlook is stable with limited transactions.',
-    liquidity: 'Low trading activity observed in the market.',
+    outlook: 'Market outlook is stable.',
+    liquidity: 'Low trading activity.',
     pStatus: 'STEADY',
     oStatus: 'STABLE',
     lStatus: 'LOW',
   },
   Malaysia: {
     pricing: 'Current pricing for Malaysia I-RECs remains stable.',
-    outlook: 'Market outlook remains balanced with steady demand.',
-    liquidity: 'Low liquidity observed in the market.',
+    outlook: 'Market outlook remains balanced.',
+    liquidity: 'Low liquidity.',
     pStatus: 'STABLE',
     oStatus: 'BALANCED',
     lStatus: 'LOW',
   },
   Bangladesh: {
     pricing: 'Current pricing for Bangladesh I-RECs remains steady.',
-    outlook: 'Market outlook remains stable with limited market movement.',
-    liquidity: 'Low trading activity observed in the market.',
+    outlook: 'Market outlook remains stable.',
+    liquidity: 'Low trading activity.',
     pStatus: 'STEADY',
     oStatus: 'STABLE',
     lStatus: 'LOW',
   },
   'Sri Lanka': {
     pricing: 'Current pricing for Sri Lanka I-RECs remains stable.',
-    outlook: 'Market outlook remains stable with limited demand.',
-    liquidity: 'Low liquidity observed in the market.',
+    outlook: 'Market outlook remains stable.',
+    liquidity: 'Low liquidity.',
     pStatus: 'STABLE',
     oStatus: 'STABLE',
     lStatus: 'LOW',
   },
   Philippines: {
     pricing: 'Current pricing for Philippines I-RECs remains steady.',
-    outlook: 'Market outlook remains stable with moderate activity.',
-    liquidity: 'Low trading activity observed in the market.',
+    outlook: 'Market outlook remains stable.',
+    liquidity: 'Low trading activity.',
     pStatus: 'STEADY',
     oStatus: 'STABLE',
     lStatus: 'LOW',
   },
   Thailand: {
     pricing: 'Current pricing for Thailand I-RECs remains stable.',
-    outlook: 'Market outlook remains stable with balanced interest.',
-    liquidity: 'Low liquidity observed in the market.',
+    outlook: 'Market outlook remains stable.',
+    liquidity: 'Low liquidity.',
     pStatus: 'STABLE',
     oStatus: 'STABLE',
     lStatus: 'LOW',
   },
   Taiwan: {
     pricing: 'Current pricing for Taiwan I-RECs remains steady.',
-    outlook: 'Market outlook remains stable with limited transactions.',
-    liquidity: 'Low trading activity observed in the market.',
+    outlook: 'Market outlook remains stable.',
+    liquidity: 'Low trading activity.',
     pStatus: 'STEADY',
     oStatus: 'STABLE',
     lStatus: 'LOW',
   },
   Indonesia: {
     pricing: 'Current pricing for Indonesia I-RECs shows an upward trend.',
-    outlook: 'Market outlook remains bullish with increasing demand.',
-    liquidity: 'Moderate trading activity observed in the market.',
+    outlook: 'Market outlook remains bullish.',
+    liquidity: 'Moderate trading activity.',
     pStatus: 'UPWARD',
     oStatus: 'BULLISH',
     lStatus: 'MODERATE',
   },
   Nepal: {
     pricing: 'Current pricing for Nepal I-RECs shows a slight decline.',
-    outlook: 'Market outlook remains bearish due to limited demand.',
-    liquidity: 'Low trading activity observed in the market.',
+    outlook: 'Market outlook remains bearish.',
+    liquidity: 'Low trading activity.',
     pStatus: 'DECLINING',
     oStatus: 'BEARISH',
-    lStatus: 'LOW',
-  },
-  Chile: {
-    pricing: 'Current pricing for Chile I-RECs remains stable.',
-    outlook: 'Market outlook remains balanced with steady demand.',
-    liquidity: 'Low liquidity observed in the market.',
-    pStatus: 'STABLE',
-    oStatus: 'BALANCED',
-    lStatus: 'LOW',
-  },
-  Peru: {
-    pricing: 'Current pricing for Peru I-RECs remains steady.',
-    outlook: 'Market outlook remains stable with moderate interest.',
-    liquidity: 'Low trading activity observed in the market.',
-    pStatus: 'STEADY',
-    oStatus: 'STABLE',
-    lStatus: 'LOW',
-  },
-  Israel: {
-    pricing: 'Current pricing for Israel I-RECs remains stable.',
-    outlook: 'Market outlook remains stable with balanced demand.',
-    liquidity: 'Low liquidity observed in the market.',
-    pStatus: 'STABLE',
-    oStatus: 'STABLE',
-    lStatus: 'LOW',
-  },
-  Turkey: {
-    pricing: 'Current pricing for Turkey I-RECs remains steady.',
-    outlook: 'Market outlook remains stable with moderate demand.',
-    liquidity: 'Low trading activity observed in the market.',
-    pStatus: 'STEADY',
-    oStatus: 'STABLE',
-    lStatus: 'LOW',
-  },
-  Kazakhstan: {
-    pricing: 'Current pricing for Kazakhstan I-RECs remains stable.',
-    outlook: 'Market outlook remains stable with limited activity.',
-    liquidity: 'Low liquidity observed in the market.',
-    pStatus: 'STABLE',
-    oStatus: 'STABLE',
-    lStatus: 'LOW',
-  },
-  Uzbekistan: {
-    pricing: 'Current pricing for Uzbekistan I-RECs remains steady.',
-    outlook: 'Market outlook remains stable with balanced demand.',
-    liquidity: 'Low trading activity observed in the market.',
-    pStatus: 'STEADY',
-    oStatus: 'STABLE',
     lStatus: 'LOW',
   },
 };
@@ -180,18 +131,21 @@ function ChangeView({ selectedCountry, geoData }) {
   const map = useMap();
   useEffect(() => {
     if (geoData && selectedCountry) {
+      const selName = selectedCountry.toLowerCase().trim();
+      if (selName === 'singapore') {
+        map.setView([1.3521, 103.8198], 11, { animate: true });
+        return;
+      }
       const feature = geoData.features.find((f) => {
         const geoName = (f.properties?.name || '').toLowerCase();
-        const selName = selectedCountry.toLowerCase().replace(/-/g, ' ');
         return (
           geoName === selName ||
-          (selName === 'kazakhstan' && geoName === 'kazakstan') ||
-          (selName === 'uae' && geoName === 'united arab emirates')
+          (selName === 'uae' && geoName === 'united arab emirates') ||
+          (selName === 'sri lanka' && geoName === 'sri lanka')
         );
       });
       if (feature) {
-        const geoJsonLayer = L.geoJson(feature);
-        map.flyToBounds(geoJsonLayer.getBounds(), {
+        map.flyToBounds(L.geoJson(feature).getBounds(), {
           padding: [30, 30],
           duration: 1.5,
         });
@@ -206,7 +160,8 @@ export default function MarketMapLeaflet() {
   const [geoData, setGeoData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [selectedCountry, setSelectedCountry] = useState('India');
-  const [selectedMonth, setSelectedMonth] = useState('January');
+  const [selectedMonth, setSelectedMonth] = useState('February'); // Default to February as per your Postman data
+  const [reFilter, setReFilter] = useState('All');
 
   const bg = useColorModeValue('#F4F7FE', '#0B1437');
   const cardBg = useColorModeValue('white', '#111C44');
@@ -218,7 +173,7 @@ export default function MarketMapLeaflet() {
     const fetchAllData = async () => {
       try {
         const [res, geoRes] = await Promise.all([
-          api.get('/pricing/country-avg'),
+          api.get('/pricing/country-avg'), // New Optimized API
           axios.get(
             'https://raw.githubusercontent.com/johan/world.geo.json/master/countries.geo.json',
           ),
@@ -226,7 +181,7 @@ export default function MarketMapLeaflet() {
         setData(res.data.data || []);
         setGeoData(geoRes.data);
       } catch (err) {
-        console.error('Fetch Error:', err);
+        console.error('Fetch error:', err);
       } finally {
         setLoading(false);
       }
@@ -243,25 +198,42 @@ export default function MarketMapLeaflet() {
     [data],
   );
 
+  // Unified Filter Logic for RE and Non-RE
   const selectedInfo = useMemo(() => {
-    const filtered = data.filter(
-      (item) =>
-        (item.country || '').toLowerCase().trim() ===
-          selectedCountry.toLowerCase() && item.month === selectedMonth,
-    );
+    const filtered = data.filter((item) => {
+      const itemCountry = (item.country || '').toLowerCase().trim();
+      const selCountry = selectedCountry.toLowerCase().trim();
+      const itemMonth = item.month || '';
+
+      const basicMatch =
+        itemCountry === selCountry && itemMonth === selectedMonth;
+      if (!basicMatch) return false;
+
+      if (reFilter === 'All') return true;
+      // Matching Postman output: "Yes" or "No"
+      return item.isRE100 === reFilter;
+    });
+
     if (filtered.length === 0) return null;
+
+    // Aggregate average price if multiple entries exist for a filter
+    const totalRate = filtered.reduce(
+      (acc, curr) => acc + (curr.avgPrice || 0),
+      0,
+    );
+    const totalCount = filtered.reduce(
+      (acc, curr) => acc + (curr.count || 0),
+      0,
+    );
+
     return {
-      avgPrice:
-        filtered.reduce(
-          (acc, curr) => acc + parseFloat(curr.avgPrice || 0),
-          0,
-        ) / filtered.length,
-      count: filtered.length,
+      avgPrice: totalRate / filtered.length,
+      totalRecords: totalCount,
       technologies: [
-        ...new Set(filtered.map((item) => item.Technology || 'Solar/Wind')),
+        ...new Set(filtered.map((item) => item.technology || 'I-REC')),
       ],
     };
-  }, [data, selectedCountry, selectedMonth]);
+  }, [data, selectedCountry, selectedMonth, reFilter]);
 
   const currentOverview = useMemo(
     () =>
@@ -279,7 +251,7 @@ export default function MarketMapLeaflet() {
   if (loading)
     return (
       <Flex justify="center" align="center" h="100vh" bg={bg}>
-        <Spinner size="xl" color="green.400" />
+        <Spinner size="xl" color="green.400" thickness="4px" />
       </Flex>
     );
 
@@ -298,7 +270,6 @@ export default function MarketMapLeaflet() {
         borderColor={borderColor}
         boxShadow="xl"
       >
-        {/* RESPONSIVE HEADER & FILTERS */}
         <Flex
           direction={{ base: 'column', md: 'row' }}
           justify="space-between"
@@ -312,20 +283,34 @@ export default function MarketMapLeaflet() {
               fontWeight="700"
               color={textColor}
             >
-              I-REC Price Analytics
+              Hestiya Market Intelligence
             </Text>
             <HStack color="gray.500" spacing={1}>
               <Icon as={MdFilterList} />
-              <Text fontSize="xs">Satellite Territorial Map</Text>
+              <Text fontSize="xs">Global I-REC Analytics</Text>
             </HStack>
           </Box>
+
           <Stack
             direction={{ base: 'column', sm: 'row' }}
             spacing={3}
             w={{ base: '100%', md: 'auto' }}
           >
             <Select
-              w={{ base: '100%', sm: '140px' }}
+              size="sm"
+              value={reFilter}
+              onChange={(e) => setReFilter(e.target.value)}
+              borderRadius="10px"
+              fontWeight="600"
+              borderColor="green.400"
+              border="2px solid"
+            >
+              <option value="All">All Types</option>
+              <option value="Yes">RE100 Only</option>
+              <option value="No">Non-RE Only</option>
+            </Select>
+
+            <Select
               size="sm"
               value={selectedMonth}
               onChange={(e) => setSelectedMonth(e.target.value)}
@@ -337,8 +322,8 @@ export default function MarketMapLeaflet() {
                 </option>
               ))}
             </Select>
+
             <Select
-              w={{ base: '100%', sm: '180px' }}
               size="sm"
               value={selectedCountry}
               onChange={(e) => setSelectedCountry(e.target.value)}
@@ -356,7 +341,7 @@ export default function MarketMapLeaflet() {
         </Flex>
 
         <Flex direction={{ base: 'column', lg: 'row' }} gap={6}>
-          {/* MAP BOX - ADJUSTED HEIGHT FOR MOBILE */}
+          {/* Map Section */}
           <Box
             h={{ base: '350px', md: '550px' }}
             flex="2"
@@ -377,15 +362,18 @@ export default function MarketMapLeaflet() {
               <ChangeView selectedCountry={selectedCountry} geoData={geoData} />
               {geoData && (
                 <GeoJSON
-                  key={`${selectedCountry}-${selectedMonth}`}
+                  key={`${selectedCountry}-${selectedMonth}-${reFilter}`}
                   data={geoData}
                   style={(f) => {
-                    const geoName = (f.properties?.name || '').toLowerCase();
                     const isMatch =
-                      geoName ===
-                      selectedCountry.toLowerCase().replace(/-/g, ' ');
+                      (f.properties?.name || '').toLowerCase() ===
+                      selectedCountry.toLowerCase().trim();
                     return {
-                      fillColor: isMatch ? '#239758' : 'transparent',
+                      fillColor: isMatch
+                        ? reFilter === 'No'
+                          ? '#3182CE'
+                          : '#239758'
+                        : 'transparent',
                       weight: isMatch ? 2 : 0.1,
                       color: isMatch ? '#ADFF2F' : 'rgba(255,255,255,0.05)',
                       fillOpacity: isMatch ? 0.6 : 0,
@@ -396,7 +384,7 @@ export default function MarketMapLeaflet() {
             </MapContainer>
           </Box>
 
-          {/* SIDE INFO PANEL */}
+          {/* Side Info Panel */}
           <Box
             flex="1"
             bg={sidePanelBg}
@@ -409,13 +397,23 @@ export default function MarketMapLeaflet() {
               <Stack spacing={5}>
                 <Flex justify="space-between" align="center">
                   <Badge
-                    colorScheme="green"
+                    colorScheme={
+                      reFilter === 'Yes'
+                        ? 'green'
+                        : reFilter === 'No'
+                          ? 'blue'
+                          : 'gray'
+                    }
                     px="3"
                     py="0.5"
                     borderRadius="full"
                     fontSize="2xs"
                   >
-                    Live Market
+                    {reFilter === 'All'
+                      ? 'Live Market'
+                      : reFilter === 'Yes'
+                        ? 'RE100 Certified'
+                        : 'Non-RE Market'}
                   </Badge>
                   <HStack spacing={1} color="gray.500">
                     <Icon as={MdCalendarToday} boxSize={3} />
@@ -426,7 +424,7 @@ export default function MarketMapLeaflet() {
                 </Flex>
                 <Box>
                   <Text fontSize="xs" color="gray.500">
-                    Selected Region
+                    Region
                   </Text>
                   <Text
                     fontSize={{ base: '2xl', md: '4xl' }}
@@ -441,17 +439,16 @@ export default function MarketMapLeaflet() {
                   <Text fontSize="xs" color="gray.500">
                     Average Rate
                   </Text>
-                  {/* RESPONSIVE FONT SIZE FOR PRICE */}
                   <Text
                     color="#239758"
-                    fontSize={{ base: '4xl', md: '5xl', lg: '6xl' }}
+                    fontSize={{ base: '4xl', md: '6xl' }}
                     fontWeight="900"
                     lineHeight="1"
                   >
                     ${selectedInfo.avgPrice.toFixed(2)}
                   </Text>
                   <Text fontSize="2xs" color="gray.400" mt={1}>
-                    Based on {selectedInfo.count} points
+                    Based on {selectedInfo.totalRecords} certificates
                   </Text>
                 </Box>
                 <Box>
@@ -461,7 +458,7 @@ export default function MarketMapLeaflet() {
                     color="gray.500"
                     mb="2"
                   >
-                    AVAILABLE TECHNOLOGIES
+                    TECHNOLOGIES
                   </Text>
                   <SimpleGrid columns={{ base: 1, sm: 2, lg: 1 }} spacing={2}>
                     {selectedInfo.technologies.map((tech, i) => (
@@ -474,16 +471,15 @@ export default function MarketMapLeaflet() {
                         borderColor="green.100"
                         align="center"
                       >
-                        <HStack>
-                          <Icon as={MdBolt} color="green.400" boxSize={3} />
-                          <Text
-                            fontSize="xs"
-                            fontWeight="700"
-                            color={textColor}
-                          >
-                            {tech}
-                          </Text>
-                        </HStack>
+                        <Icon
+                          as={MdBolt}
+                          color="green.400"
+                          boxSize={3}
+                          mr={2}
+                        />
+                        <Text fontSize="xs" fontWeight="700" color={textColor}>
+                          {tech}
+                        </Text>
                       </Flex>
                     ))}
                   </SimpleGrid>
@@ -498,14 +494,13 @@ export default function MarketMapLeaflet() {
               >
                 <Icon as={MdPublic} boxSize={10} color="gray.300" mb={3} />
                 <Text fontSize="sm" fontWeight="bold" color="gray.500">
-                  No Data Found
+                  No Market Data Available
                 </Text>
               </Flex>
             )}
           </Box>
         </Flex>
 
-        {/* RESPONSIVE MARKET OVERVIEW CARDS */}
         {selectedInfo && (
           <Box mt="30px">
             <Divider mb="25px" borderColor={borderColor} />
@@ -558,7 +553,7 @@ function SentimentCard({ title, status, color, desc }) {
   const borderColor = useColorModeValue('gray.200', '#222E5F');
   return (
     <Box
-      p={{ base: '15px', md: '25px' }}
+      p="20px"
       borderRadius="20px"
       bg={sidePanelBg}
       border="1px solid"

@@ -45,14 +45,13 @@ exports.uploadMarketPricing = async (req, res) => {
 
 exports.getCountrywiseAverage = async (req, res) => {
   try {
-    // 1. Optimization: Aggregate bina heavy 'records' array ke
     const averages = await Pricing.aggregate([
       {
         $group: {
           _id: {
             country: "$Country",
             month: "$Month",
-            isRE100: "$isRE100",
+            isRE100: "$isRE100", // RE vs Non-RE grouping
           },
           avgPrice: { $avg: "$Rate" },
           count: { $sum: 1 },
@@ -63,20 +62,29 @@ exports.getCountrywiseAverage = async (req, res) => {
           _id: 0,
           country: "$_id.country",
           month: "$_id.month",
-          isRE100: "$id.isRE100",
+          isRE100: "$_id.isRE100", // Fix: Yahan pehle '_id' miss ho raha tha
           avgPrice: { $round: ["$avgPrice", 2] },
           count: 1,
         },
       },
-      { $sort: { month: -1, country: 1 } }, // Latest month pehle
-    ]).allowDiskUse(true); // Large data handle karne ke liye
+      {
+        $sort: {
+          month: -1,
+          country: 1,
+          isRE100: 1,
+        },
+      },
+    ]).allowDiskUse(true);
 
-    res.status(200).json({ success: true, data: averages });
+    res.status(200).json({
+      success: true,
+      totalGroups: averages.length,
+      data: averages,
+    });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
 };
-
 exports.getMarketPricing = async (req, res) => {
   try {
     const {
