@@ -11,7 +11,12 @@ import {
   Text,
   Progress,
 } from '@chakra-ui/react';
-import { MdAttachMoney, MdPublic, MdAnalytics } from 'react-icons/md';
+import {
+  MdAttachMoney,
+  MdPublic,
+  MdAnalytics,
+  MdNotificationsActive,
+} from 'react-icons/md'; // MdNotificationsActive add kiya
 
 import MiniStatistics from 'components/card/MiniStatistics';
 import IconBox from 'components/icons/IconBox';
@@ -20,7 +25,7 @@ import WeeklyRevenue from 'views/admin/default/components/WeeklyRevenue';
 import api from '../../../utils/axiosConfig';
 
 export default function UserReports() {
-  // --- 1. HOOKS (Hamesha top par, bina kisi condition ke) ---
+  // --- 1. HOOKS ---
   const location = useLocation();
   const navigate = useNavigate();
   const boxBg = useColorModeValue('secondaryGray.300', 'whiteAlpha.100');
@@ -42,8 +47,6 @@ export default function UserReports() {
         setLoading(true);
         const pRes = await api.get('/pricing/country-avg');
         setPricingData(pRes.data?.data || []);
-
-        // Background sync starts here
         await fetchProgressiveData();
       } catch (err) {
         console.error(err);
@@ -56,9 +59,8 @@ export default function UserReports() {
 
   const fetchProgressiveData = async () => {
     setIsSyncing(true);
-    let currentVol = 0;
     try {
-      const res = await api.get('/irec/all-data?limit=1000'); // Pehla bada batch
+      const res = await api.get('/irec/all-data?limit=1000');
       const plants = res.data?.data || [];
       setAllPlants(plants);
 
@@ -118,7 +120,7 @@ export default function UserReports() {
     };
   }, [allPlants, pricingData, searchQuery]);
 
-  // --- 4. CONDITIONAL RENDER (Hooks ke baad hi aana chahiye) ---
+  // --- 4. CONDITIONAL RENDER ---
   if (loading)
     return (
       <Flex justify="center" align="center" h="100vh">
@@ -127,7 +129,47 @@ export default function UserReports() {
     );
 
   return (
-    <Box pt={{ base: '130px', md: '80px' }}>
+    <Box pt={{ base: '130px', md: '80px', xl: '80px' }}>
+      {/* News Marquee Section Re-Added */}
+      <Box
+        bg={brandGreen}
+        color="white"
+        py="10px"
+        borderRadius="15px"
+        mb="25px"
+        overflow="hidden"
+        position="relative"
+        zIndex="1"
+        display="flex"
+        alignItems="center"
+        boxShadow="0px 4px 12px rgba(0, 0, 0, 0.1)"
+      >
+        <Flex
+          px="20px"
+          alignItems="center"
+          bg={brandGreen}
+          zIndex="2"
+          position="absolute"
+          left="0"
+          fontWeight="bold"
+        >
+          <Icon as={MdNotificationsActive} mr="10px" />
+          <Text whiteSpace="nowrap">UPDATES:</Text>
+          <Box h="20px" w="2px" bg="whiteAlpha.300" mx="15px" />
+        </Flex>
+
+        <Box
+          as="marquee"
+          width="100%"
+          style={{ fontSize: '14px', fontWeight: '500' }}
+        >
+          I-REC Prices are stabilizing across Southeast Asia • Current Average
+          Market Rate: ${stats.avgPrice} • Total Verified Market Volume reached{' '}
+          {stats.volume} MWh • Global Renewable Energy Demand up by 15% this
+          quarter.
+        </Box>
+      </Box>
+
       {searchQuery && (
         <Flex
           bg="blue.50"
