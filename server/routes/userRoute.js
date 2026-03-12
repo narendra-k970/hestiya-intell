@@ -11,5 +11,6 @@ router.post("/complete-signup", userController.completeKycAndSignup);
 
 router.post("/login", userController.login);
 router.get("/profile", protect, userController.getUserProfile);
+router.get("/all", protect, userController.getAllUsers);
 
 module.exports = router;

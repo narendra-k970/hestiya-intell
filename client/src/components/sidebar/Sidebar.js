@@ -99,7 +99,7 @@ function Sidebar(props) {
             leftIcon={!toggleSidebar ? <Icon as={MdHeadsetMic} /> : null}
             onClick={() =>
               window.open(
-                'https://calendar.google.com/calendar/u/0/appointments/schedules/AcZssZ1ai9jKHkjZhwSU7M8YWn1AbLGnnYCBa8S-7lKwkdOC4qoNRENkUjEPapAScvhvZ_cnnJDGah-N',
+                'https://calendar.app.google/LStbmSHgoiKUXvtw8',
                 '_blank',
               )
             }

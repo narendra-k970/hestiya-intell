@@ -220,3 +220,24 @@ exports.getUserProfile = async (req, res) => {
     });
   }
 };
+
+// --- 6. GET ALL USERS (Admin Only) ---
+exports.getAllUsers = async (req, res) => {
+  try {
+    const users = await User.find()
+      .select("-password -otp -otpExpires")
+      .sort({ createdAt: -1 });
+
+    res.json({
+      success: true,
+      count: users.length,
+      users: users,
+    });
+  } catch (err) {
+    console.error("Error fetching all users:", err.message);
+    res.status(500).json({
+      success: false,
+      message: "Internal Server Error",
+    });
+  }
+};

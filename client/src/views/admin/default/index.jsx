@@ -139,7 +139,7 @@ export default function UserReports() {
         mb="25px"
         overflow="hidden"
         position="relative"
-        zIndex="1"
+        zIndex="0"
         display="flex"
         alignItems="center"
         boxShadow="0px 4px 12px rgba(0, 0, 0, 0.1)"

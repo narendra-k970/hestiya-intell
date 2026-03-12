@@ -1,6 +1,13 @@
 import React from 'react';
 import { Icon } from '@chakra-ui/react';
-import { MdHome, MdLock, MdDetails, MdUploadFile, MdMap } from 'react-icons/md';
+import {
+  MdHome,
+  MdLock,
+  MdDetails,
+  MdUploadFile,
+  MdMap,
+  MdPerson,
+} from 'react-icons/md';
 
 // Admin & User View Imports
 import MainDashboard from 'views/admin/default';
@@ -11,6 +18,7 @@ import UserMarketDashboard from 'views/user/marketPrice';
 import MarketPricingUpload from 'views/admin/pricing';
 import MarketMap from 'views/user/price-view';
 import UserProfile from 'views/user/profile';
+import AdminUserList from 'views/admin/user/index';
 
 const brandGreen = '#19944D';
 
@@ -24,7 +32,14 @@ const routes = [
     component: <MainDashboard />,
     roles: ['admin'],
   },
-
+  {
+    name: 'Users',
+    layout: '/admin',
+    path: '/user',
+    icon: <Icon as={MdPerson} width="20px" height="20px" color={brandGreen} />,
+    component: <AdminUserList />,
+    roles: ['admin'],
+  },
   // 2. USER HOME (I-Recs ke upar le aaya)
   {
     name: 'Home',
