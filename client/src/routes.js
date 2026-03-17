@@ -49,7 +49,14 @@ const routes = [
     component: <MainDashboard />,
     roles: ['user'],
   },
-
+  {
+    name: 'User Profile',
+    layout: '/user',
+    path: '/profile',
+    icon: <Icon as={MdMap} width="20px" height="20px" color={brandGreen} />,
+    component: <UserProfile />,
+    roles: ['user'],
+  },
   // 3. I-RECS (Dropdown Group)
   {
     name: 'I-REC',
@@ -88,14 +95,6 @@ const routes = [
         path: '/price-view',
         icon: <Icon as={MdMap} width="20px" height="20px" color={brandGreen} />,
         component: <MarketMap />,
-        roles: ['user'],
-      },
-      {
-        name: 'User Profile',
-        layout: '/user',
-        path: '/profile',
-        icon: <Icon as={MdMap} width="20px" height="20px" color={brandGreen} />,
-        component: <UserProfile />,
         roles: ['user'],
       },
     ],

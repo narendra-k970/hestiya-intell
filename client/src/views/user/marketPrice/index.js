@@ -21,8 +21,10 @@ import {
   Link,
   Icon,
   Select,
+  IconButton,
+  Tooltip,
 } from '@chakra-ui/react';
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, GeoJSON } from 'react-leaflet';
 import MarkerClusterGroup from 'react-leaflet-markercluster';
 import {
   MdWbSunny,
@@ -32,6 +34,7 @@ import {
   MdPublic,
   MdOpenInNew,
   MdSync,
+  MdRestartAlt,
 } from 'react-icons/md';
 import L from 'leaflet';
 import { renderToStaticMarkup } from 'react-dom/server';
@@ -41,45 +44,22 @@ import 'leaflet/dist/leaflet.css';
 const BRAND_GREEN = '#048E3D';
 
 const customStyles = `
-  .leaflet-container { 
-    z-index: 1 !important; 
-    font-family: 'Inter', sans-serif !important; 
-    border-radius: 18px; 
-  }
-  .custom-m { background: none !important; border: none !important; }
-  
-  .marker-cluster-small div, .marker-cluster-medium div, .marker-cluster-large div {
+  .leaflet-container :focus { outline: none !important; }
+  .leaflet-marker-icon:focus { outline: none !important; }
+  .leaflet-container { z-index: 1 !important; border-radius: 18px; outline: none !important; }
+  .custom-m { background: none !important; border: none !important; outline: none !important; }
+  .marker-cluster div {
     background-color: ${BRAND_GREEN} !important; color: white !important; 
     font-weight: 700 !important; border-radius: 50% !important; 
-    font-size: 11px !important; display: flex !important;
-    align-items: center !important; justify-content: center !important;
     width: 32px !important; height: 32px !important;
+    display: flex !important; align-items: center !important; justify-content: center !important;
+    font-size: 11px;
   }
-  .marker-cluster-small, .marker-cluster-medium, .marker-cluster-large {
-    background-color: rgba(4, 142, 61, 0.2) !important; border-radius: 50% !important;
-  }
-
-  .leaflet-popup-content-wrapper { 
-    border-radius: 12px !important; 
-    min-width: 260px !important; 
-    box-shadow: 0 8px 25px rgba(0,0,0,0.2) !important;
-  }
-  .leaflet-popup-content { margin: 15px !important; }
-
+  .leaflet-popup-content-wrapper { padding: 0 !important; overflow: hidden; border-radius: 12px !important; }
+  .leaflet-popup-content { margin: 0 !important; width: 200px !important; }
   @keyframes spin { 100% { transform: rotate(360deg); } }
   .spin-icon { animation: spin 2s linear infinite; }
 `;
-
-const countryCoordinates = {
-  India: [20.5937, 78.9629],
-  'Sri Lanka': [7.8731, 80.7718],
-  Vietnam: [14.0583, 108.2772],
-  Thailand: [15.87, 100.9925],
-  Brazil: [-14.235, -51.9253],
-  Turkey: [38.9637, 35.2433],
-  China: [35.8617, 104.1954],
-  'United Arab Emirates': [23.4241, 53.8478],
-};
 
 const getTechConfig = (techName) => {
   const tech = String(techName || '').toLowerCase();
@@ -87,7 +67,7 @@ const getTechConfig = (techName) => {
   if (tech.includes('wind')) return { icon: MdAir, color: '#4299E1' };
   if (tech.includes('hydro')) return { icon: MdWaterDrop, color: '#3182CE' };
   if (tech.includes('biomass')) return { icon: MdForest, color: BRAND_GREEN };
-  return { icon: MdPublic, color: BRAND_GREEN };
+  return { icon: MdPublic, color: '#A0AEC0' };
 };
 
 const createLeafletIcon = (techName) => {
@@ -96,7 +76,7 @@ const createLeafletIcon = (techName) => {
     <div
       style={{
         color: 'white',
-        backgroundColor: config.color || BRAND_GREEN,
+        backgroundColor: config.color,
         borderRadius: '50%',
         width: '28px',
         height: '28px',
@@ -122,44 +102,56 @@ export default function UserMarketDashboard() {
   const [allData, setAllData] = useState([]);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [isSyncing, setIsSyncing] = useState(false);
-  const [activeFilter, setActiveFilter] = useState('All');
-  const [countryFilter, setCountryFilter] = useState('All');
-  const mapRef = useRef(null);
+  const [geoData, setGeoData] = useState(null);
 
+  const [reStatus, setReStatus] = useState('All');
+  const [techFilter, setTechFilter] = useState('All');
+  const [countryFilter, setCountryFilter] = useState('All');
+
+  const mapRef = useRef(null);
   const bg = useColorModeValue('#F4F7FE', '#0B1437');
   const cardBg = useColorModeValue('white', '#111C44');
-  const tableHeadBg = useColorModeValue('gray.50', '#1B254B');
   const borderColor = useColorModeValue('gray.100', '#222E5F');
-  const textColor = useColorModeValue('gray.700', 'white');
+  const tableHeadBg = useColorModeValue('gray.50', '#1B254B');
 
   useEffect(() => {
     let isMounted = true;
-    const fetchInChunks = async () => {
+    const fetchAllData = async () => {
       setIsSyncing(true);
       try {
-        let page = 1;
-        let hasMore = true;
-        while (hasMore && page <= 25) {
+        let page = 1,
+          hasMore = true;
+
+        // Loop ke bahar accumulated array ki zaroorat nahi agar hum state ko update kar rahe hain
+        while (hasMore && isMounted) {
           const res = await api.get(`/irec/all-data?page=${page}&limit=1000`);
+
           if (res.data.success && isMounted) {
             const processed = res.data.data
               .map((p) => ({
                 ...p,
                 fLat: parseFloat(p.latitude),
                 fLng: parseFloat(p.longitude),
-                isRE: /solar|wind|hydro|biomass|renewable/.test(
-                  String(p.technology).toLowerCase(),
-                ),
+                isRE100_Strict: p.isRE100 === true,
                 totalVol: (p.issuances || []).reduce(
                   (acc, curr) => acc + (Number(curr.issuanceVolume) || 0),
                   0,
                 ),
               }))
               .filter((p) => !isNaN(p.fLat) && !isNaN(p.fLng));
-            setAllData((prev) => [...prev, ...processed]);
-            if (page === 1) setIsInitialLoading(false);
+
+            // DHEERE DHEERE LOAD: State ko previous data mein append karte rahein
+            setAllData((prevData) => [...prevData, ...processed]);
+
+            if (page === 1) {
+              setIsInitialLoading(false);
+            }
+
             hasMore = res.data.hasMore;
             page++;
+
+            // OPTIONAL: Chhota sa delay taaki aankhon ko "loading" feel ho
+            // await new Promise(resolve => setTimeout(resolve, 100));
           } else break;
         }
       } catch (err) {
@@ -167,54 +159,77 @@ export default function UserMarketDashboard() {
       }
       if (isMounted) setIsSyncing(false);
     };
-    fetchInChunks();
+
+    fetchAllData();
     return () => {
       isMounted = false;
     };
   }, []);
 
-  const handleCountryChange = (e) => {
+  // Ye filters ko ignore karke hamesha pure data ke top 20 dikhayega
+  const globalTop20 = useMemo(() => {
+    return [...allData]
+      .sort((a, b) => (b.totalVol || 0) - (a.totalVol || 0))
+      .slice(0, 20);
+  }, [allData]);
+
+  const handleCountryChange = async (e) => {
     const country = e.target.value;
     setCountryFilter(country);
-    if (mapRef.current) {
-      if (country === 'All') {
-        mapRef.current.setView([20, 30], 3);
-      } else if (countryCoordinates[country]) {
-        mapRef.current.flyTo(countryCoordinates[country], 5, { duration: 1.5 });
-      } else {
-        const firstP = allData.find((p) => p.country === country);
-        if (firstP)
-          mapRef.current.flyTo([firstP.fLat, firstP.fLng], 5, {
-            duration: 1.5,
-          });
+    setGeoData(null);
+    if (country === 'All') {
+      mapRef.current.flyTo([20, 20], 3);
+    } else {
+      try {
+        const geoRes = await fetch(
+          `https://nominatim.openstreetmap.org/search?country=${country}&polygon_geojson=1&format=json`,
+        );
+        const json = await geoRes.json();
+        if (json.length > 0) setGeoData(json[0].geojson);
+      } catch (err) {
+        console.log(err);
+      }
+      const countryPlants = allData.filter((p) => p.country === country);
+      if (countryPlants.length > 0 && mapRef.current) {
+        const bounds = L.latLngBounds(
+          countryPlants.map((p) => [p.fLat, p.fLng]),
+        );
+        mapRef.current.flyToBounds(bounds, {
+          padding: [50, 50],
+          duration: 1.5,
+        });
       }
     }
   };
 
-  const countries = useMemo(() => {
-    const list = [...new Set(allData.map((item) => item.country))]
-      .filter(Boolean)
-      .sort();
-    return ['All', ...list];
-  }, [allData]);
+  const clearFilters = () => {
+    setReStatus('All');
+    setTechFilter('All');
+    setCountryFilter('All');
+    setGeoData(null);
+    mapRef.current.flyTo([20, 20], 3);
+  };
 
   const filteredData = useMemo(() => {
-    let data = [...allData];
-    if (activeFilter === 'RE-100') data = data.filter((p) => p.isRE);
-    else if (activeFilter === 'Non-RE100') data = data.filter((p) => !p.isRE);
-    else if (activeFilter !== 'All')
-      data = data.filter((p) =>
-        (p.technology || '').toLowerCase().includes(activeFilter.toLowerCase()),
-      );
-    if (countryFilter !== 'All')
-      data = data.filter((p) => p.country === countryFilter);
-    return data.sort((a, b) => b.totalVol - a.totalVol);
-  }, [allData, activeFilter, countryFilter]);
-
-  const top10Leaders = useMemo(
-    () => [...allData].sort((a, b) => b.totalVol - a.totalVol).slice(0, 10),
-    [allData],
-  );
+    return allData
+      .filter((p) => {
+        const matchC = countryFilter === 'All' || p.country === countryFilter;
+        const matchRE =
+          reStatus === 'All'
+            ? true
+            : reStatus === 'RE-100'
+              ? p.isRE100_Strict
+              : !p.isRE100_Strict;
+        const matchT =
+          techFilter === 'All'
+            ? true
+            : (p.technology || '')
+                .toLowerCase()
+                .includes(techFilter.toLowerCase());
+        return matchC && matchRE && matchT;
+      })
+      .sort((a, b) => b.totalVol - a.totalVol);
+  }, [allData, reStatus, techFilter, countryFilter]);
 
   if (isInitialLoading)
     return (
@@ -225,18 +240,15 @@ export default function UserMarketDashboard() {
 
   return (
     <Box
-      // ISKO DHYAN SE DEKHO: Pt ko thoda aur badhaya hai aur zIndex remove kiya hai
       pt={{ base: '150px', md: '100px' }}
-      px={{ base: '10px', md: '20px' }}
+      px="20px"
       bg={bg}
       minH="100vh"
       pb="40px"
-      color={textColor}
-      overflow="visible"
     >
       <style>{customStyles}</style>
 
-      {/* --- Filter Card --- */}
+      {/* FILTER BAR WITH CLEAR ICON */}
       <Card
         bg={cardBg}
         p="12px"
@@ -244,56 +256,70 @@ export default function UserMarketDashboard() {
         borderRadius="15px"
         border="1px solid"
         borderColor={borderColor}
-        shadow="sm"
       >
-        <Flex justify="space-between" align="center" wrap="wrap" gap="15px">
-          <HStack
-            spacing="2"
-            wrap="wrap"
-            justify={{ base: 'center', md: 'start' }}
-          >
-            {[
-              'All',
-              'RE-100',
-              'Non-RE100',
-              'Solar',
-              'Wind',
-              'Hydro',
-              'Biomass',
-            ].map((f) => (
+        <Flex justify="space-between" align="center" wrap="wrap" gap="10px">
+          <HStack spacing="2" wrap="wrap">
+            {['All', 'RE-100', 'Non-RE100'].map((f) => (
               <Button
                 key={f}
                 size="xs"
-                variant={activeFilter === f ? 'solid' : 'outline'}
-                bg={activeFilter === f ? BRAND_GREEN : 'transparent'}
-                color={activeFilter === f ? 'white' : BRAND_GREEN}
-                borderColor={BRAND_GREEN}
-                onClick={() => setActiveFilter(f)}
+                colorScheme="green"
+                variant={reStatus === f ? 'solid' : 'outline'}
+                onClick={() => setReStatus(f)}
                 borderRadius="8px"
               >
                 {f}
               </Button>
             ))}
+            <Box w="1px" h="15px" bg="gray.300" mx="2" />
+            {['Solar', 'Wind', 'Hydro', 'Biomass'].map((f) => (
+              <Button
+                key={f}
+                size="xs"
+                colorScheme="green"
+                variant={techFilter === f ? 'solid' : 'ghost'}
+                onClick={() => setTechFilter(f === techFilter ? 'All' : f)}
+                borderRadius="8px"
+              >
+                {f}
+              </Button>
+            ))}
+
+            {/* CLEAR FILTER BUTTON */}
+            {(reStatus !== 'All' ||
+              techFilter !== 'All' ||
+              countryFilter !== 'All') && (
+              <Tooltip label="Clear All Filters">
+                <IconButton
+                  icon={<MdRestartAlt />}
+                  size="xs"
+                  colorScheme="red"
+                  variant="ghost"
+                  onClick={clearFilters}
+                  ml={2}
+                  aria-label="Clear Filters"
+                />
+              </Tooltip>
+            )}
           </HStack>
 
-          <HStack
-            spacing="3"
-            w={{ base: '100%', md: 'auto' }}
-            justify="flex-end"
-          >
+          <HStack spacing="3">
             <Select
-              maxW={{ base: '140px', md: '200px' }}
+              maxW="200px"
               size="xs"
               borderRadius="8px"
               value={countryFilter}
               onChange={handleCountryChange}
-              borderColor={borderColor}
             >
-              {countries.map((c) => (
-                <option key={c} value={c} style={{ color: 'black' }}>
-                  {c === 'All' ? '🌐 All Countries' : c}
-                </option>
-              ))}
+              <option value="All">🌍 All Countries</option>
+              {[...new Set(allData.map((c) => c.country))]
+                .filter(Boolean)
+                .sort()
+                .map((c) => (
+                  <option key={c} value={c} style={{ color: 'black' }}>
+                    {c}
+                  </option>
+                ))}
             </Select>
             {isSyncing && (
               <HStack spacing={1}>
@@ -303,13 +329,8 @@ export default function UserMarketDashboard() {
                   color={BRAND_GREEN}
                   boxSize="14px"
                 />
-                <Text
-                  fontSize="10px"
-                  fontWeight="bold"
-                  color={BRAND_GREEN}
-                  display={{ base: 'none', sm: 'block' }}
-                >
-                  {allData.length} Records
+                <Text fontSize="10px" fontWeight="bold" color={BRAND_GREEN}>
+                  {allData.length}
                 </Text>
               </HStack>
             )}
@@ -327,77 +348,128 @@ export default function UserMarketDashboard() {
             borderColor={borderColor}
           >
             <Box
-              height={{ base: '350px', md: '68vh' }}
+              height={{ base: '350px', md: '60vh' }}
               borderRadius="18px"
               overflow="hidden"
             >
               <MapContainer
-                center={[20, 77]}
-                zoom={4}
+                center={[20, 20]}
+                zoom={3}
                 style={{ height: '100%', width: '100%' }}
                 ref={mapRef}
               >
                 <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-                <MarkerClusterGroup
-                  showCoverageOnHover={false}
-                  maxClusterRadius={45}
-                >
-                  {filteredData.map((plant) => (
+                {geoData && (
+                  <GeoJSON
+                    data={geoData}
+                    style={{ color: BRAND_GREEN, weight: 2, fillOpacity: 0.1 }}
+                  />
+                )}
+                <MarkerClusterGroup maxClusterRadius={40}>
+                  {filteredData.map((p) => (
                     <Marker
-                      key={plant._id}
-                      position={[plant.fLat, plant.fLng]}
-                      icon={createLeafletIcon(plant.technology)}
+                      key={p._id}
+                      position={[p.fLat, p.fLng]}
+                      icon={createLeafletIcon(p.technology)}
                     >
                       <Popup>
-                        <VStack align="stretch" spacing={3}>
-                          <Box>
-                            <Text
-                              fontWeight="800"
-                              fontSize="13px"
-                              color={BRAND_GREEN}
-                              lineHeight="1.2"
-                            >
-                              {plant.company || 'Unnamed Device'}
+                        <Box
+                          p="0"
+                          borderRadius="8px"
+                          overflow="hidden"
+                          maxW="200px"
+                        >
+                          {/* Header - Super Slim */}
+                          <Box bg={BRAND_GREEN} px="2" py="1" color="white">
+                            <Text fontWeight="800" fontSize="11px" isTruncated>
+                              {p.company}
                             </Text>
-                            <Text
-                              fontSize="10px"
-                              color="gray.500"
-                              mt={1}
-                              fontWeight="bold"
-                            >
-                              Code: {plant.plantCode}
+                            <Text fontSize="8px" opacity="0.9" mt="-1px">
+                              {p.country} • {p.technology}
                             </Text>
                           </Box>
-                          <Link
-                            href={`https://evident.app/IREC/device-register/${plant.plantCode}`}
-                            isExternal
-                            color={BRAND_GREEN}
-                            fontSize="10px"
-                            fontWeight="bold"
-                            borderBottom="1px solid"
-                            borderColor="green.100"
-                            pb={1}
+
+                          {/* Body - Minimum Spacing */}
+                          <Box
+                            px="2"
+                            py="1.5"
+                            bg={useColorModeValue('white', '#111C44')}
                           >
-                            VIEW ON EVIDENT <Icon as={MdOpenInNew} />
-                          </Link>
-                          <Flex
-                            justify="space-between"
-                            align="center"
-                            pt={1}
-                            borderTop="1px dashed #ddd"
-                          >
-                            <Text fontSize="11px" fontWeight="bold">
-                              Total MWh:
-                            </Text>
-                            <Text
-                              fontSize="12px"
-                              fontWeight="900"
-                              color={BRAND_GREEN}
+                            <VStack align="stretch" spacing={0}>
+                              {(p.issuances || []).length > 0 ? (
+                                p.issuances.slice(0, 5).map((iss, i) => (
+                                  <HStack
+                                    key={i}
+                                    justify="space-between"
+                                    fontSize="9px"
+                                    h="14px"
+                                  >
+                                    <Text color="gray.500">
+                                      {iss.issuingYear || iss.year || 'N/A'}:
+                                    </Text>
+                                    <Text
+                                      fontWeight="700"
+                                      color={useColorModeValue(
+                                        'gray.700',
+                                        'white',
+                                      )}
+                                    >
+                                      {Number(
+                                        iss.issuanceVolume,
+                                      ).toLocaleString()}
+                                    </Text>
+                                  </HStack>
+                                ))
+                              ) : (
+                                <Text
+                                  fontSize="9px"
+                                  color="gray.400"
+                                  fontStyle="italic"
+                                >
+                                  No data
+                                </Text>
+                              )}
+                            </VStack>
+
+                            {/* Footer - Minimalist */}
+                            <Flex
+                              mt="1"
+                              pt="1"
+                              borderTop="1px solid"
+                              borderColor="gray.100"
+                              justify="space-between"
+                              align="baseline"
                             >
-                              {Math.round(plant.totalVol).toLocaleString()}
-                            </Text>
-                          </Flex>
-                        </VStack>
+                              <HStack spacing={1}>
+                                <Text
+                                  fontSize="7px"
+                                  color="gray.400"
+                                  fontWeight="bold"
+                                >
+                                  TOTAL
+                                </Text>
+                                <Text
+                                  fontSize="11px"
+                                  fontWeight="900"
+                                  color={BRAND_GREEN}
+                                >
+                                  {Math.round(p.totalVol).toLocaleString()}
+                                </Text>
+                              </HStack>
+
+                              <Link
+                                href={`https://evident.app/IREC/device-register/${p.plantCode}`}
+                                isExternal
+                                fontSize="8px"
+                                fontWeight="bold"
+                                color={BRAND_GREEN}
+                                _hover={{ textDecoration: 'none' }}
+                              >
+                                OPEN <Icon as={MdOpenInNew} boxSize="8px" />
+                              </Link>
+                            </Flex>
+                          </Box>
+                        </Box>
                       </Popup>
                     </Marker>
                   ))}
@@ -407,36 +479,33 @@ export default function UserMarketDashboard() {
           </Card>
         </Box>
 
+        {/* SIDEBAR - 10 PLANTS ONLY */}
         <Card
           bg={cardBg}
           p="15px"
           borderRadius="24px"
-          height={{ base: 'auto', lg: '69vh' }}
+          height={{ base: 'auto', lg: '61vh' }}
           border="1px solid"
           borderColor={borderColor}
         >
           <Text
             fontWeight="800"
-            mb="4"
+            mb="3"
             fontSize="10px"
             color="gray.400"
             letterSpacing="1px"
           >
-            GLOBAL LEADERS
+            TOP 10 ASSETS
           </Text>
-          <VStack
-            align="stretch"
-            spacing={3}
-            overflowY={{ base: 'visible', lg: 'auto' }}
-          >
-            {top10Leaders.map((p, i) => (
+          <VStack align="stretch" spacing={2} overflowY="auto">
+            {filteredData.slice(0, 10).map((p, i) => (
               <Box
                 key={i}
                 p="3"
                 bg={bg}
                 borderRadius="12px"
                 cursor="pointer"
-                onClick={() => mapRef.current.flyTo([p.fLat, p.fLng], 12)}
+                onClick={() => mapRef.current.flyTo([p.fLat, p.fLng], 14)}
                 _hover={{ border: `1px solid ${BRAND_GREEN}` }}
               >
                 <Text
@@ -445,14 +514,12 @@ export default function UserMarketDashboard() {
                   color={BRAND_GREEN}
                   noOfLines={1}
                 >
-                  {p.company || p.plantCode}
+                  {p.company}
                 </Text>
                 <HStack justify="space-between" mt={1}>
-                  <Text fontSize="10px" color="gray.500" fontWeight="bold">
-                    {p.country}
-                  </Text>
-                  <Text fontSize="11px" fontWeight="900" color={textColor}>
-                    {Math.round(p.totalVol).toLocaleString()} MWh
+                  <Text fontSize="9px">{p.country}</Text>
+                  <Text fontSize="10px" fontWeight="900">
+                    {Math.round(p.totalVol).toLocaleString()}
                   </Text>
                 </HStack>
               </Box>
@@ -461,34 +528,49 @@ export default function UserMarketDashboard() {
         </Card>
       </SimpleGrid>
 
+      {/* BOTTOM TABLE - 20 PLANTS ONLY */}
       <Card
         bg={cardBg}
-        p={{ base: '15px', md: '20px' }}
+        p="20px"
         borderRadius="24px"
         border="1px solid"
         borderColor={borderColor}
         shadow="lg"
       >
-        <Text fontWeight="800" fontSize="md" mb="4" color={BRAND_GREEN}>
-          Global Asset Directory
-        </Text>
+        <Flex justify="space-between" align="center" mb="4">
+          <Text fontWeight="800" fontSize="md" color={BRAND_GREEN}>
+            Global Leaderboard (Overall Top 20)
+          </Text>
+          <Badge
+            colorScheme="green"
+            variant="subtle"
+            px="2"
+            borderRadius="full"
+          >
+            Worldwide Data
+          </Badge>
+        </Flex>
+
         <Box overflowX="auto">
           <Table variant="simple" size="sm">
             <Thead bg={tableHeadBg}>
               <Tr>
-                <Th fontSize="10px">Rank</Th>
-                <Th fontSize="10px">Asset Name</Th>
-                <Th fontSize="10px">Country</Th>
-                <Th fontSize="10px">Technology</Th>
-                <Th isNumeric fontSize="10px">
-                  I-REC Volume
-                </Th>
+                <Th width="50px">Rank</Th>
+                <Th>Asset Name</Th>
+                <Th>Country</Th>
+                <Th>Technology</Th>
+                <Th>Status</Th>
+                <Th isNumeric>Volume (MWh)</Th>
               </Tr>
             </Thead>
             <Tbody>
-              {filteredData.slice(0, 30).map((p, idx) => (
+              {/* Yahan humne globalTop20 use kiya hai */}
+              {globalTop20.map((p, idx) => (
                 <Tr
                   key={p._id}
+                  _hover={{
+                    bg: useColorModeValue('gray.50', 'whiteAlpha.100'),
+                  }}
                   cursor="pointer"
                   onClick={() => {
                     mapRef.current.flyTo([p.fLat, p.fLng], 12);
@@ -498,23 +580,37 @@ export default function UserMarketDashboard() {
                   <Td fontWeight="900" color={BRAND_GREEN}>
                     #{idx + 1}
                   </Td>
-                  <Td>
-                    <Text fontWeight="700" fontSize="11px">
-                      {p.company || 'N/A'}
-                    </Text>
+                  <Td fontWeight="700" fontSize="11px">
+                    {p.company}
                   </Td>
-                  <Td fontSize="11px">{p.country}</Td>
+                  <Td fontSize="11px" fontWeight="500">
+                    {p.country}
+                  </Td>
                   <Td fontSize="10px">
                     <Badge
-                      variant="outline"
-                      colorScheme="green"
-                      color={BRAND_GREEN}
-                      borderColor={BRAND_GREEN}
+                      variant="solid"
+                      bg={getTechConfig(p.technology).color}
+                      color="white"
+                      fontSize="9px"
                     >
                       {p.technology}
                     </Badge>
                   </Td>
-                  <Td isNumeric fontWeight="800" fontSize="11px">
+                  <Td>
+                    <Badge
+                      colorScheme={p.isRE100_Strict ? 'green' : 'orange'}
+                      variant="outline"
+                      fontSize="9px"
+                    >
+                      {p.isRE100_Strict ? 'RE100' : 'NON-RE'}
+                    </Badge>
+                  </Td>
+                  <Td
+                    isNumeric
+                    fontWeight="800"
+                    fontSize="11px"
+                    color={BRAND_GREEN}
+                  >
                     {Math.round(p.totalVol).toLocaleString()}
                   </Td>
                 </Tr>
