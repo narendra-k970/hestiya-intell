@@ -17,11 +17,11 @@ const scrapeEvidentIssuance = async (country = null) => {
       query.country = { $regex: new RegExp(`^${country}$`, "i") };
     }
 
-    const plants = await Irec.find(query); // Limit hata di
+    const plants = await Irec.find(query);
 
     if (plants.length === 0) {
       console.log(
-        `✅ ${country || "Sabhi"} plants pehle se hi sync ho chuke hain ya DB mein nahi hain.`,
+        `✅ ${country || "Sabhi"} plants pehle se hi sync ho chuke hain.`,
       );
       return;
     }
@@ -50,22 +50,25 @@ const scrapeEvidentIssuance = async (country = null) => {
 
       try {
         console.log(
-          `⏳ [${i + 1}/${plants.length}] Scraping: ${plant.plantCode} (${plant.country})`,
+          `⏳ [${i + 1}/${plants.length}] Scraping: ${plant.plantCode}`,
         );
 
         await page.goto(
           `https://evident.app/IREC/device-register/${plant.plantCode}`,
-          { waitUntil: "networkidle2", timeout: 60000 },
+          { waitUntil: "networkidle2", timeout: 70000 }, // Timeout thoda badha diya
         );
 
-        // Table check
+        // Slow loading pages ke liye timeout 15s se 30s kiya
         await page
           .waitForFunction(() => document.querySelectorAll("td").length > 0, {
-            timeout: 15000,
+            timeout: 30000,
           })
-          .catch(() => {});
+          .catch(() => {
+            console.log(`⚠️ ${plant.plantCode}: Table didn't appear in 30s`);
+          });
 
-        await delay(3000);
+        // Delay 3s se 6s kiya taaki dynamic data miss na ho
+        await delay(6000);
 
         const allIssuances = await page.evaluate(() => {
           const rows = Array.from(document.querySelectorAll("tr"));
@@ -90,7 +93,6 @@ const scrapeEvidentIssuance = async (country = null) => {
           return data;
         });
 
-        // Update database
         await Irec.findByIdAndUpdate(plant._id, {
           $set: {
             issuances: allIssuances || [],
@@ -103,9 +105,7 @@ const scrapeEvidentIssuance = async (country = null) => {
             `✅ ${plant.plantCode}: Saved ${allIssuances.length} records.`,
           );
         } else {
-          console.log(
-            `ℹ️ ${plant.plantCode}: No data on portal, marked as synced.`,
-          );
+          console.log(`ℹ️ ${plant.plantCode}: No data on portal.`);
         }
       } catch (e) {
         console.log(`❌ Error ${plant.plantCode}: ${e.message}`);
@@ -113,7 +113,6 @@ const scrapeEvidentIssuance = async (country = null) => {
         await page.close();
       }
 
-      // Browser refresh every 40 plants to keep it fast
       if (i > 0 && i % 40 === 0) {
         await browser.close();
         browser = await puppeteer.launch({

@@ -204,7 +204,7 @@ exports.fixSyncData = async (req, res) => {
   try {
     const result = await Irec.updateMany(
       {
-        country: "Egypt",
+        country: "Zimbabwe",
         issuances: { $size: 0 },
       },
       { $unset: { lastSyncAt: "" } },

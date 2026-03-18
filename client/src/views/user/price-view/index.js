@@ -179,6 +179,7 @@ export default function MarketMapLeaflet() {
           ),
         ]);
         setData(res.data.data || []);
+        console.log(res.data.data);
         setGeoData(geoRes.data);
       } catch (err) {
         console.error('Fetch error:', err);
@@ -229,6 +230,9 @@ export default function MarketMapLeaflet() {
     return {
       avgPrice: totalRate / filtered.length,
       totalRecords: totalCount,
+      vintages: [...new Set(filtered.map((item) => item.vintage))]
+        .filter(Boolean)
+        .sort(),
       technologies: [
         ...new Set(filtered.map((item) => item.technology || 'I-REC')),
       ],
@@ -415,13 +419,16 @@ export default function MarketMapLeaflet() {
                         ? 'RE100 Certified'
                         : 'Non-RE Market'}
                   </Badge>
+
+                  {/* Existing Calendar Feature */}
                   <HStack spacing={1} color="gray.500">
                     <Icon as={MdCalendarToday} boxSize={3} />
                     <Text fontSize="2xs" fontWeight="bold">
-                      {selectedMonth} 2026
+                      {selectedMonth} {selectedInfo.vintages[0] || '2026'}
                     </Text>
                   </HStack>
                 </Flex>
+
                 <Box>
                   <Text fontSize="xs" color="gray.500">
                     Region
@@ -434,11 +441,28 @@ export default function MarketMapLeaflet() {
                     {selectedCountry}
                   </Text>
                 </Box>
+
                 <Divider />
+
                 <Box>
-                  <Text fontSize="xs" color="gray.500">
-                    Average Rate
-                  </Text>
+                  {/* Label aur Vintage Badge */}
+                  <HStack spacing={2} mb={1}>
+                    <Text fontSize="xs" color="gray.500">
+                      Average Rate
+                    </Text>
+                    {selectedInfo.vintages.length > 0 && (
+                      <Badge
+                        colorScheme="purple"
+                        fontSize="10px"
+                        variant="solid"
+                        borderRadius="full"
+                        px={2}
+                      >
+                        Vintage: {selectedInfo.vintages.join(', ')}
+                      </Badge>
+                    )}
+                  </HStack>
+
                   <Text
                     color="#239758"
                     fontSize={{ base: '4xl', md: '6xl' }}
@@ -447,10 +471,12 @@ export default function MarketMapLeaflet() {
                   >
                     ${selectedInfo.avgPrice.toFixed(2)}
                   </Text>
+
                   <Text fontSize="2xs" color="gray.400" mt={1}>
-                    Based on {selectedInfo.totalRecords} certificates
+                    Based on {selectedInfo.totalRecords} Suppliers
                   </Text>
                 </Box>
+
                 <Box>
                   <Text
                     fontSize="2xs"
