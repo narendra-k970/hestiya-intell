@@ -234,8 +234,20 @@ export default function MarketMapLeaflet() {
         .filter(Boolean)
         .sort(),
       technologies: [
-        ...new Set(filtered.map((item) => item.technology || 'I-REC')),
-      ],
+        ...new Set(
+          filtered.flatMap((item) => {
+            // 1. Agar field 'technology' ya 'Technology' (Case sensitive) dono mein se koi bhi ho
+            const techRaw = item.technology || item.Technology || 'I-REC';
+
+            // 2. Cleaning: Brackets, Quotes aur extra spaces hatao
+            // Yeh regex "(Wind/Solar)" ko "Wind/Solar" bana dega
+            const cleanTech = techRaw.replace(/[()]/g, '').trim();
+
+            // 3. Agar string ke andar "/" hai (jaise Wind/Solar), toh unhe alag-alag karke array bana do
+            return cleanTech.includes('/') ? cleanTech.split('/') : cleanTech;
+          }),
+        ),
+      ].filter(Boolean), // Empty values filter karne ke liye
     };
   }, [data, selectedCountry, selectedMonth, reFilter]);
 

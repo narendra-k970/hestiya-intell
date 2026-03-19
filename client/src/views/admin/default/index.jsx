@@ -144,32 +144,56 @@ export default function UserReports() {
         alignItems="center"
         boxShadow="0px 4px 12px rgba(0, 0, 0, 0.1)"
       >
+        {/* Static Label Section */}
         <Flex
           px="20px"
           alignItems="center"
           bg={brandGreen}
-          zIndex="2"
+          zIndex="10"
           position="absolute"
           left="0"
           fontWeight="bold"
+          h="100%"
         >
           <Icon as={MdNotificationsActive} mr="10px" />
           <Text whiteSpace="nowrap">UPDATES:</Text>
           <Box h="20px" w="2px" bg="whiteAlpha.300" mx="15px" />
         </Flex>
 
-        <Box
-          as="marquee"
-          width="100%"
-          style={{ fontSize: '14px', fontWeight: '500' }}
-        >
-          I-REC Prices are stabilizing across Southeast Asia • Current Average
-          Market Rate: ${stats.avgPrice} • Total Verified Market Volume reached{' '}
-          {stats.volume} MWh • Global Renewable Energy Demand up by 15% this
-          quarter.
+        {/* Infinite Marquee Container */}
+        <Box whiteSpace="nowrap" flex="1" overflow="hidden" display="flex">
+          <Box
+            display="inline-block"
+            as="div"
+            sx={{
+              display: 'inline-block',
+              whiteSpace: 'nowrap',
+              animation: 'infinite-scroll 60s linear infinite',
+              '@keyframes infinite-scroll': {
+                '0%': { transform: 'translateX(100%)' },
+                '100%': { transform: 'translateX(-100%)' },
+              },
+              fontSize: '14px',
+              fontWeight: '500',
+            }}
+          >
+            <Text as="span">
+              I-REC Prices are stabilizing across Southeast Asia • Current
+              Average Market Rate: ${stats?.avgPrice || '0.00'} • Total Verified
+              Market Volume reached {stats?.volume || '0'} MWh • Global
+              Renewable Energy Demand is rising across all regions.
+            </Text>
+
+            {/* Same text again with a separator to create a seamless bridge */}
+            <Text as="span" ml="100px">
+              I-REC Prices are stabilizing across Southeast Asia • Current
+              Average Market Rate: ${stats?.avgPrice || '0.00'} • Total Verified
+              Market Volume reached {stats?.volume || '0'} MWh • Global
+              Renewable Energy Demand is rising across all regions.
+            </Text>
+          </Box>
         </Box>
       </Box>
-
       {searchQuery && (
         <Flex
           bg="blue.50"

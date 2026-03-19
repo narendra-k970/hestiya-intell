@@ -52,6 +52,7 @@ exports.getCountrywiseAverage = async (req, res) => {
             country: "$Country",
             month: "$Month",
             isRE100: "$isRE100",
+            technology: "$Technology",
             vintage: "$Vintage", // RE vs Non-RE grouping
           },
           avgPrice: { $avg: "$Rate" },
@@ -64,6 +65,7 @@ exports.getCountrywiseAverage = async (req, res) => {
           country: "$_id.country",
           month: "$_id.month",
           vintage: "$_id.vintage",
+          technology: "$_id.technology",
           isRE100: "$_id.isRE100", // Fix: Yahan pehle '_id' miss ho raha tha
           avgPrice: { $round: ["$avgPrice", 2] },
           count: 1,
