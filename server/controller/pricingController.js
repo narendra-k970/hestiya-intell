@@ -24,7 +24,6 @@ exports.uploadMarketPricing = async (req, res) => {
       Country: item.Country,
       Month: item.Month,
       Vintage: item.Vintage,
-      // Yahan check kar rahe hain: JSON mein 'Technology' ho ya 'Type ' ya 'Type'
       Technology: item.Technology || item["Type "] || item.Type || "N/A",
       Rate: Number(item.Rate || 0),
       isRE100: item.isRE100 || "No",

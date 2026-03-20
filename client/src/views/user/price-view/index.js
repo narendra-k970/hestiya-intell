@@ -27,104 +27,22 @@ import api from '../../../utils/axiosConfig';
 import axios from 'axios';
 import 'leaflet/dist/leaflet.css';
 
-// Market Sentiment Data
-const marketOverviewData = {
-  India: {
-    pricing: 'Current pricing for India I-RECs is slightly declining.',
-    outlook: 'Market sentiment remains cautious.',
-    liquidity: 'High trading activity.',
-    pStatus: 'DECLINING',
-    oStatus: 'CAUTIOUS',
-    lStatus: 'HIGH',
-  },
-  Singapore: {
-    pricing: 'Current pricing for Singapore I-RECs remains stable.',
-    outlook: 'Market outlook is stable.',
-    liquidity: 'Low trading activity.',
-    pStatus: 'STABLE',
-    oStatus: 'STABLE',
-    lStatus: 'LOW',
-  },
-  Vietnam: {
-    pricing: 'Current pricing for Vietnam I-RECs remains steady.',
-    outlook: 'Market outlook remains stable.',
-    liquidity: 'Low liquidity.',
-    pStatus: 'STEADY',
-    oStatus: 'STABLE',
-    lStatus: 'LOW',
-  },
-  Pakistan: {
-    pricing: 'Current pricing for Pakistan I-RECs remains steady.',
-    outlook: 'Market outlook is stable.',
-    liquidity: 'Low trading activity.',
-    pStatus: 'STEADY',
-    oStatus: 'STABLE',
-    lStatus: 'LOW',
-  },
-  Malaysia: {
-    pricing: 'Current pricing for Malaysia I-RECs remains stable.',
-    outlook: 'Market outlook remains balanced.',
-    liquidity: 'Low liquidity.',
-    pStatus: 'STABLE',
-    oStatus: 'BALANCED',
-    lStatus: 'LOW',
-  },
-  Bangladesh: {
-    pricing: 'Current pricing for Bangladesh I-RECs remains steady.',
-    outlook: 'Market outlook remains stable.',
-    liquidity: 'Low trading activity.',
-    pStatus: 'STEADY',
-    oStatus: 'STABLE',
-    lStatus: 'LOW',
-  },
-  'Sri Lanka': {
-    pricing: 'Current pricing for Sri Lanka I-RECs remains stable.',
-    outlook: 'Market outlook remains stable.',
-    liquidity: 'Low liquidity.',
-    pStatus: 'STABLE',
-    oStatus: 'STABLE',
-    lStatus: 'LOW',
-  },
-  Philippines: {
-    pricing: 'Current pricing for Philippines I-RECs remains steady.',
-    outlook: 'Market outlook remains stable.',
-    liquidity: 'Low trading activity.',
-    pStatus: 'STEADY',
-    oStatus: 'STABLE',
-    lStatus: 'LOW',
-  },
-  Thailand: {
-    pricing: 'Current pricing for Thailand I-RECs remains stable.',
-    outlook: 'Market outlook remains stable.',
-    liquidity: 'Low liquidity.',
-    pStatus: 'STABLE',
-    oStatus: 'STABLE',
-    lStatus: 'LOW',
-  },
-  Taiwan: {
-    pricing: 'Current pricing for Taiwan I-RECs remains steady.',
-    outlook: 'Market outlook remains stable.',
-    liquidity: 'Low trading activity.',
-    pStatus: 'STEADY',
-    oStatus: 'STABLE',
-    lStatus: 'LOW',
-  },
-  Indonesia: {
-    pricing: 'Current pricing for Indonesia I-RECs shows an upward trend.',
-    outlook: 'Market outlook remains bullish.',
-    liquidity: 'Moderate trading activity.',
-    pStatus: 'UPWARD',
-    oStatus: 'BULLISH',
-    lStatus: 'MODERATE',
-  },
-  Nepal: {
-    pricing: 'Current pricing for Nepal I-RECs shows a slight decline.',
-    outlook: 'Market outlook remains bearish.',
-    liquidity: 'Low trading activity.',
-    pStatus: 'DECLINING',
-    oStatus: 'BEARISH',
-    lStatus: 'LOW',
-  },
+const getMonthOrder = (month) => {
+  const months = [
+    'January',
+    'February',
+    'March',
+    'April',
+    'May',
+    'June',
+    'July',
+    'August',
+    'September',
+    'October',
+    'November',
+    'December',
+  ];
+  return months.indexOf(month);
 };
 
 function ChangeView({ selectedCountry, geoData }) {
@@ -162,6 +80,7 @@ export default function MarketMapLeaflet() {
   const [selectedCountry, setSelectedCountry] = useState('India');
   const [selectedMonth, setSelectedMonth] = useState('February'); // Default to February as per your Postman data
   const [reFilter, setReFilter] = useState('All');
+  const [selectedVintage, setSelectedVintage] = useState('');
 
   const bg = useColorModeValue('#F4F7FE', '#0B1437');
   const cardBg = useColorModeValue('white', '#111C44');
@@ -201,68 +120,110 @@ export default function MarketMapLeaflet() {
 
   // Unified Filter Logic for RE and Non-RE
   const selectedInfo = useMemo(() => {
+    const selCountry = selectedCountry.toLowerCase().trim();
+
+    // 1. Current Month Filtered Data
     const filtered = data.filter((item) => {
-      const itemCountry = (item.country || '').toLowerCase().trim();
-      const selCountry = selectedCountry.toLowerCase().trim();
-      const itemMonth = item.month || '';
-
-      const basicMatch =
-        itemCountry === selCountry && itemMonth === selectedMonth;
-      if (!basicMatch) return false;
-
-      if (reFilter === 'All') return true;
-      // Matching Postman output: "Yes" or "No"
-      return item.isRE100 === reFilter;
+      return (
+        (item.country || '').toLowerCase().trim() === selCountry &&
+        item.month === selectedMonth &&
+        (reFilter === 'All' || item.isRE100 === reFilter)
+      );
     });
 
     if (filtered.length === 0) return null;
 
-    // Aggregate average price if multiple entries exist for a filter
-    const totalRate = filtered.reduce(
-      (acc, curr) => acc + (curr.avgPrice || 0),
-      0,
-    );
-    const totalCount = filtered.reduce(
-      (acc, curr) => acc + (curr.count || 0),
-      0,
-    );
+    // 2. Market Average (All Vintages)
+    const currentPrice =
+      filtered.reduce((acc, curr) => acc + (curr.avgPrice || 0), 0) /
+      filtered.length;
+
+    // 3. Vintage Specific Logic
+    const availableVintages = [...new Set(filtered.map((item) => item.vintage))]
+      .filter(Boolean)
+      .sort();
+
+    // Auto-select first vintage if none selected or selection invalid
+    const activeVintage =
+      selectedVintage && availableVintages.includes(selectedVintage)
+        ? selectedVintage
+        : availableVintages[0] || '';
+
+    const vintageEntries = filtered.filter((f) => f.vintage === activeVintage);
+    const vintageAvgPrice =
+      vintageEntries.length > 0
+        ? vintageEntries.reduce((acc, curr) => acc + (curr.avgPrice || 0), 0) /
+          vintageEntries.length
+        : 0;
+
+    // 4. Premium vs Discount Calculation
+    const priceDiffPercent =
+      currentPrice > 0
+        ? ((vintageAvgPrice - currentPrice) / currentPrice) * 100
+        : 0;
+
+    // 5. Monthly Comparison Logic (Previous Month)
+    const prevMonthIdx = getMonthOrder(selectedMonth);
+    const prevMonthName =
+      prevMonthIdx > 0
+        ? [
+            'January',
+            'February',
+            'March',
+            'April',
+            'May',
+            'June',
+            'July',
+            'August',
+            'September',
+            'October',
+            'November',
+            'December',
+          ][prevMonthIdx - 1]
+        : null;
+
+    const prevFiltered = data.filter((item) => {
+      return (
+        (item.country || '').toLowerCase().trim() === selCountry &&
+        item.month === prevMonthName &&
+        (reFilter === 'All' || item.isRE100 === reFilter)
+      );
+    });
+
+    const prevPrice =
+      prevFiltered.length > 0
+        ? prevFiltered.reduce((acc, curr) => acc + (curr.avgPrice || 0), 0) /
+          prevFiltered.length
+        : currentPrice;
+
+    const trendDiff = currentPrice - prevPrice;
 
     return {
-      avgPrice: totalRate / filtered.length,
-      totalRecords: totalCount,
-      vintages: [...new Set(filtered.map((item) => item.vintage))]
-        .filter(Boolean)
-        .sort(),
+      avgPrice: currentPrice,
+      vintageAvgPrice,
+      activeVintage,
+      availableVintages,
+      priceDiffPercent,
+      totalRecords: filtered.reduce((acc, curr) => acc + (curr.count || 0), 0),
+      pStatus:
+        trendDiff > 0.05
+          ? 'UPWARD'
+          : trendDiff < -0.05
+            ? 'DECLINING'
+            : 'STEADY',
+      pricingDesc: `Market price is ${trendDiff > 0.05 ? 'upward' : trendDiff < -0.05 ? 'declining' : 'stable'} compared to ${prevMonthName || 'last month'}.`,
+      oStatus: trendDiff >= 0 ? 'BULLISH' : 'CAUTIOUS',
+      lStatus: filtered.length > 5 ? 'HIGH' : 'MODERATE',
       technologies: [
         ...new Set(
           filtered.flatMap((item) => {
-            // 1. Agar field 'technology' ya 'Technology' (Case sensitive) dono mein se koi bhi ho
-            const techRaw = item.technology || item.Technology || 'I-REC';
-
-            // 2. Cleaning: Brackets, Quotes aur extra spaces hatao
-            // Yeh regex "(Wind/Solar)" ko "Wind/Solar" bana dega
-            const cleanTech = techRaw.replace(/[()]/g, '').trim();
-
-            // 3. Agar string ke andar "/" hai (jaise Wind/Solar), toh unhe alag-alag karke array bana do
-            return cleanTech.includes('/') ? cleanTech.split('/') : cleanTech;
+            const raw = item.Technology || item.technology || 'I-REC';
+            return raw.replace(/[()]/g, '').split('/');
           }),
         ),
-      ].filter(Boolean), // Empty values filter karne ke liye
+      ].filter(Boolean),
     };
-  }, [data, selectedCountry, selectedMonth, reFilter]);
-
-  const currentOverview = useMemo(
-    () =>
-      marketOverviewData[selectedCountry] || {
-        pricing: `Current pricing for ${selectedCountry} remains steady.`,
-        outlook: 'Market outlook remains stable.',
-        liquidity: 'Low trading activity observed.',
-        pStatus: 'STEADY',
-        oStatus: 'STABLE',
-        lStatus: 'LOW',
-      },
-    [selectedCountry],
-  );
+  }, [data, selectedCountry, selectedMonth, reFilter, selectedVintage]);
 
   if (loading)
     return (
@@ -404,7 +365,7 @@ export default function MarketMapLeaflet() {
           <Box
             flex="1"
             bg={sidePanelBg}
-            p={{ base: '20px', md: '30px' }}
+            p={{ base: '20px', md: '20px' }}
             borderRadius="24px"
             border="1px solid"
             borderColor={borderColor}
@@ -432,11 +393,10 @@ export default function MarketMapLeaflet() {
                         : 'Non-RE Market'}
                   </Badge>
 
-                  {/* Existing Calendar Feature */}
                   <HStack spacing={1} color="gray.500">
                     <Icon as={MdCalendarToday} boxSize={3} />
                     <Text fontSize="2xs" fontWeight="bold">
-                      {selectedMonth} {selectedInfo.vintages[0] || '2026'}
+                      {selectedMonth} {selectedInfo.activeVintage}
                     </Text>
                   </HStack>
                 </Flex>
@@ -456,39 +416,64 @@ export default function MarketMapLeaflet() {
 
                 <Divider />
 
+                {/* Section 1: Market Average Price */}
                 <Box>
-                  {/* Label aur Vintage Badge */}
-                  <HStack spacing={2} mb={1}>
-                    <Text fontSize="xs" color="gray.500">
-                      Average Rate
-                    </Text>
-                    {selectedInfo.vintages.length > 0 && (
-                      <Badge
-                        colorScheme="purple"
-                        fontSize="10px"
-                        variant="solid"
-                        borderRadius="full"
-                        px={2}
-                      >
-                        Vintage: {selectedInfo.vintages.join(', ')}
-                      </Badge>
-                    )}
-                  </HStack>
-
+                  <Text fontSize="xs" color="gray.500" mb={0}>
+                    Market Average (All Vintages)
+                  </Text>
                   <Text
-                    color="#239758"
-                    fontSize={{ base: '4xl', md: '6xl' }}
-                    fontWeight="900"
+                    color={useColorModeValue('gray.700', 'white')}
+                    fontSize={{ base: '2xl', md: '2xl' }}
+                    fontWeight="700"
                     lineHeight="1"
                   >
                     ${selectedInfo.avgPrice.toFixed(2)}
                   </Text>
-
                   <Text fontSize="2xs" color="gray.400" mt={1}>
                     Based on {selectedInfo.totalRecords} Suppliers
                   </Text>
                 </Box>
 
+                {/* Section 2: Vintage Specific Card */}
+                <Box
+                  p={2}
+                  bg={useColorModeValue('white', 'whiteAlpha.50')}
+                  borderRadius="20px"
+                  border="1px solid"
+                  borderColor="green.100"
+                  boxShadow="sm"
+                >
+                  <Flex justify="space-between" align="center" mb={3}>
+                    <Text fontSize="xs" fontWeight="bold" color="gray.600">
+                      VINTAGE RATE
+                    </Text>
+                    <Select
+                      size="xs"
+                      w="100px"
+                      borderRadius="8px"
+                      bg={useColorModeValue('gray.50', 'navy.800')}
+                      value={selectedInfo.activeVintage}
+                      onChange={(e) => setSelectedVintage(e.target.value)}
+                    >
+                      {selectedInfo.availableVintages.map((v) => (
+                        <option key={v} value={v} style={{ color: 'black' }}>
+                          {v}
+                        </option>
+                      ))}
+                    </Select>
+                  </Flex>
+
+                  <HStack align="baseline" spacing={2} mb={1}>
+                    <Text fontSize="3xl" fontWeight="900" color="green.500">
+                      ${selectedInfo.vintageAvgPrice.toFixed(2)}
+                    </Text>
+                  </HStack>
+                  <Text fontSize="2xs" color="gray.400" fontWeight="bold">
+                    USD/MWh
+                  </Text>
+                </Box>
+
+                {/* Section 3: Technologies */}
                 <Box>
                   <Text
                     fontSize="2xs"
@@ -525,7 +510,7 @@ export default function MarketMapLeaflet() {
               </Stack>
             ) : (
               <Flex
-                h="200px"
+                h="300px"
                 align="center"
                 justify="center"
                 direction="column"
@@ -548,35 +533,33 @@ export default function MarketMapLeaflet() {
             >
               <SentimentCard
                 title="Pricing Trend"
-                status={currentOverview.pStatus}
+                status={selectedInfo.pStatus}
                 color={
-                  currentOverview.pStatus === 'UPWARD'
+                  selectedInfo.pStatus === 'UPWARD'
                     ? 'green.400'
-                    : currentOverview.pStatus === 'DECLINING'
+                    : selectedInfo.pStatus === 'DECLINING'
                       ? 'red.400'
                       : 'blue.400'
                 }
-                desc={currentOverview.pricing}
+                desc={selectedInfo.pricingDesc}
               />
               <SentimentCard
                 title="Market Outlook"
-                status={currentOverview.oStatus}
+                status={selectedInfo.oStatus}
                 color={
-                  currentOverview.oStatus === 'BULLISH'
+                  selectedInfo.oStatus === 'BULLISH'
                     ? 'green.400'
-                    : currentOverview.oStatus === 'BEARISH'
-                      ? 'red.400'
-                      : 'orange.400'
+                    : 'orange.400'
                 }
-                desc={currentOverview.outlook}
+                desc={`The market outlook for ${selectedCountry} is ${selectedInfo.oStatus.toLowerCase()} based on current trends.`}
               />
               <SentimentCard
                 title="Liquidity"
-                status={currentOverview.lStatus}
+                status={selectedInfo.lStatus}
                 color={
-                  currentOverview.lStatus === 'HIGH' ? 'purple.400' : 'gray.400'
+                  selectedInfo.lStatus === 'HIGH' ? 'purple.400' : 'gray.400'
                 }
-                desc={currentOverview.liquidity}
+                desc={`${selectedInfo.lStatus} trading activity observed with ${selectedInfo.totalRecords} active records.`}
               />
             </SimpleGrid>
           </Box>
