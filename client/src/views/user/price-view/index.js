@@ -47,29 +47,45 @@ const getMonthOrder = (month) => {
 
 function ChangeView({ selectedCountry, geoData }) {
   const map = useMap();
+
   useEffect(() => {
-    if (geoData && selectedCountry) {
-      const selName = selectedCountry.toLowerCase().trim();
-      if (selName === 'singapore') {
-        map.setView([1.3521, 103.8198], 11, { animate: true });
-        return;
-      }
+    if (!selectedCountry || !map) return;
+
+    const selName = selectedCountry.toLowerCase().trim();
+
+    // Manual coordinates for small islands/countries
+    const manualCoords = {
+      'sri lanka': { center: [7.8731, 80.7718], zoom: 8 },
+      singapore: { center: [1.3521, 103.8198], zoom: 11 },
+      uae: { center: [23.4241, 53.8478], zoom: 7 },
+    };
+
+    // Case A: Manual Coordinates (Sri Lanka, etc.)
+    if (manualCoords[selName]) {
+      const { center, zoom } = manualCoords[selName];
+      map.flyTo(center, zoom, { duration: 2, animate: true });
+      return;
+    }
+
+    // Case B: GeoJSON Bounds (India, etc.)
+    if (geoData && geoData.features) {
       const feature = geoData.features.find((f) => {
-        const geoName = (f.properties?.name || '').toLowerCase();
+        const name = (f.properties?.name || f.id || '').toLowerCase();
         return (
-          geoName === selName ||
-          (selName === 'uae' && geoName === 'united arab emirates') ||
-          (selName === 'sri lanka' && geoName === 'sri lanka')
+          name === selName || (selName === 'uae' && name.includes('emirates'))
         );
       });
+
       if (feature) {
-        map.flyToBounds(L.geoJson(feature).getBounds(), {
-          padding: [30, 30],
-          duration: 1.5,
-        });
+        const geoJsonLayer = L.geoJson(feature);
+        const bounds = geoJsonLayer.getBounds();
+        if (bounds.isValid()) {
+          map.flyToBounds(bounds, { padding: [50, 50], duration: 2 });
+        }
       }
     }
-  }, [selectedCountry, geoData, map]);
+  }, [selectedCountry, map, geoData]); // Dependency array is clean now
+
   return null;
 }
 
@@ -78,7 +94,7 @@ export default function MarketMapLeaflet() {
   const [geoData, setGeoData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [selectedCountry, setSelectedCountry] = useState('India');
-  const [selectedMonth, setSelectedMonth] = useState('February'); // Default to February as per your Postman data
+  const [selectedMonth, setSelectedMonth] = useState('February');
   const [reFilter, setReFilter] = useState('All');
   const [selectedVintage, setSelectedVintage] = useState('');
 
@@ -334,17 +350,34 @@ export default function MarketMapLeaflet() {
               zoom={3}
               style={{ height: '100%', width: '100%' }}
               zoomControl={false}
+              // Isko true rakhein taaki map responsive rahe
+              scrollWheelZoom={true}
             >
+              {/* WAPAS PURANA SATELLITE MAP URL */}
               <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}" />
+
               <ChangeView selectedCountry={selectedCountry} geoData={geoData} />
+
               {geoData && (
                 <GeoJSON
-                  key={`${selectedCountry}-${selectedMonth}-${reFilter}`}
+                  key={`geo-${selectedCountry}`} // Static key ya stable key use karein
                   data={geoData}
                   style={(f) => {
+                    const geoName = (
+                      f.properties?.name ||
+                      f.id ||
+                      ''
+                    ).toLowerCase();
+                    const selName = selectedCountry.toLowerCase().trim();
+
+                    // Improved Matching Logic
                     const isMatch =
-                      (f.properties?.name || '').toLowerCase() ===
-                      selectedCountry.toLowerCase().trim();
+                      geoName === selName ||
+                      (selName === 'sri lanka' &&
+                        (geoName.includes('sri lanka') || f.id === 'LKA')) ||
+                      (selName === 'uae' &&
+                        (geoName.includes('emirates') || f.id === 'ARE'));
+
                     return {
                       fillColor: isMatch
                         ? reFilter === 'No'
@@ -352,7 +385,7 @@ export default function MarketMapLeaflet() {
                           : '#239758'
                         : 'transparent',
                       weight: isMatch ? 2 : 0.1,
-                      color: isMatch ? '#ADFF2F' : 'rgba(255,255,255,0.05)',
+                      color: isMatch ? '#ADFF2F' : 'rgba(255,255,255,0.2)',
                       fillOpacity: isMatch ? 0.6 : 0,
                     };
                   }}

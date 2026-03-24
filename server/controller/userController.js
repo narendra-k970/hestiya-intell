@@ -8,7 +8,7 @@ const transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
     user: "connect@hestiya.com",
-    pass: "bcmfmdbnnbikoryk", // Aapka working App Password
+    pass: "tggvqfpgbaczveqn",
   },
 });
 
@@ -17,68 +17,59 @@ exports.sendOtp = async (req, res) => {
     const { email } = req.body;
     if (!email) return res.status(400).json({ message: "Email is required" });
 
-    // 1. Email ko saf karke normalize karo (Spaces hatao aur lowercase karo)
     const normalizedEmail = email.trim().toLowerCase();
 
-    // 2. Domain Block Logic
-    const domain = normalizedEmail.split("@")[1];
-    const blocked = [
-      "gmail.com",
-      "yahoo.com",
-      "hotmail.com",
-      "outlook.com",
-      "icloud.com",
-    ];
-    if (blocked.includes(domain)) {
-      return res.status(400).json({ message: "Only company emails allowed." });
-    }
+    // 1. Check if user exists
+    const user = await User.findOne({ email: normalizedEmail });
 
-    const existingUser = await User.findOne({ email: normalizedEmail }).lean();
-
-    // AGAR USER MIL GAYA -> Seedha Error, Koi OTP nahi jayega
-    if (existingUser) {
-      console.log(
-        "ALERT: Duplicate registration attempt for:",
-        normalizedEmail,
-      );
+    // 2. Agar user verified hai, toh hi block karo
+    if (user && user.isEmailVerified) {
       return res.status(400).json({
         success: false,
-        message: "Email already registered. Please sign in instead.",
+        message:
+          "This email is already registered and verified. Please sign in.",
       });
     }
 
-    // 4. AGAR USER NAHI HAI -> Tabhi aage badhega
+    // 3. OTP Generate karo
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const expiry = new Date(Date.now() + 10 * 60 * 1000);
 
-    const newUser = new User({
-      email: normalizedEmail,
-      otp: otp,
-      otpExpires: expiry,
-    });
+    // 4. UPSERT Logic: Naya hai toh banao, purana (unverified) hai toh update karo
+    await User.findOneAndUpdate(
+      { email: normalizedEmail },
+      {
+        otp: otp,
+        otpExpires: expiry,
+        isEmailVerified: false, // Ensure verified nahi hai abhi
+      },
+      {
+        upsert: true,
+        new: true,
+        setDefaultsOnInsert: true,
+        runValidators: false,
+      },
+    );
 
-    // 5. Database mein SAVE
-    await newUser.save({ validateBeforeSave: false });
-    console.log("SUCCESS: New user saved in DB:", normalizedEmail);
+    console.log(`OTP generated for ${normalizedEmail}: ${otp}`);
 
-    // 6. EMAIL SENDING
+    // 5. Email Sending
     await transporter.sendMail({
       from: '"Hestiya Intelligence" <connect@hestiya.com>',
       to: normalizedEmail,
       subject: "Verification Code - Hestiya Intelligence",
-      html: `<h3>Hello, Thank you for choosing Hestiya Intelligence.
-      <br/><br/>Your OTP is: <b>${otp}</b></h3>`,
+      html: `<h3>Hello,<br/><br/>Your OTP for Hestiya Intelligence is: <b>${otp}</b></h3><p>Valid for 10 minutes.</p>`,
     });
 
     return res.json({
       success: true,
-      message: "OTP sent and saved successfully.",
+      message: "OTP sent successfully.",
     });
   } catch (err) {
-    console.error("CRITICAL ERROR in sendOtp:", err.message);
+    console.error("CRITICAL ERROR:", err);
     return res.status(500).json({
       success: false,
-      message: "Server Error",
+      message: "Server Connection Error",
       error: err.message,
     });
   }

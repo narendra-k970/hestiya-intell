@@ -54,8 +54,6 @@ const userSchema = new mongoose.Schema(
     },
     countryOfIncorporation: { type: String, trim: true, default: "" },
     reason: { type: String, trim: true, default: "" },
-
-    role: { type: String, default: "user" },
   },
   { timestamps: true },
 );
