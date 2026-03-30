@@ -22,7 +22,9 @@ exports.sendOtp = async (req, res) => {
     // 1. Check if user exists
     const user = await User.findOne({ email: normalizedEmail });
 
-    // 2. Agar user verified hai, toh hi block karo
+    // 2. Sirf tabhi block karo jab user FULLY REGISTERED (Verified) ho
+    // Agar isEmailVerified false hai, toh matlab user ne beech mein process chhod diya tha,
+    // use hum naya OTP bhej kar aage badhne denge.
     if (user && user.isEmailVerified) {
       return res.status(400).json({
         success: false,
@@ -35,19 +37,20 @@ exports.sendOtp = async (req, res) => {
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const expiry = new Date(Date.now() + 10 * 60 * 1000);
 
-    // 4. UPSERT Logic: Naya hai toh banao, purana (unverified) hai toh update karo
+    // 4. UPSERT Logic with Validators
+    // CRITICAL CHANGE: runValidators: true taaki Gmail/Yahoo block logic kaam kare
     await User.findOneAndUpdate(
       { email: normalizedEmail },
       {
         otp: otp,
         otpExpires: expiry,
-        isEmailVerified: false, // Ensure verified nahi hai abhi
+        isEmailVerified: false, // Step 2 verify hone tak false hi rakhein
       },
       {
         upsert: true,
         new: true,
         setDefaultsOnInsert: true,
-        runValidators: false,
+        runValidators: true, // <--- Isse Schema validation (Gmail block) trigger hoga
       },
     );
 
@@ -66,7 +69,20 @@ exports.sendOtp = async (req, res) => {
       message: "OTP sent successfully.",
     });
   } catch (err) {
-    console.error("CRITICAL ERROR:", err);
+    console.error("ERROR in sendOtp:", err.message);
+
+    // Agar validation fail hui (e.g. Gmail domain), toh specific message bhejenge
+    if (
+      err.name === "ValidationError" ||
+      err.message.includes("validation failed")
+    ) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Only corporate emails are allowed (Gmail, Yahoo, etc. are blocked).",
+      });
+    }
+
     return res.status(500).json({
       success: false,
       message: "Server Connection Error",

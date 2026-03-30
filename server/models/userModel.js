@@ -42,9 +42,8 @@ const userSchema = new mongoose.Schema(
     role: {
       type: String,
       enum: ["user", "admin"],
-      default: "user", // Default user hi rahega
+      default: "user",
     },
-    // Company Details
     companyName: { type: String, trim: true, default: "" },
     industry: { type: String, trim: true, default: "" },
     companySize: {

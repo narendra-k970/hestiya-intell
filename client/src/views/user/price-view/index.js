@@ -94,7 +94,6 @@ export default function MarketMapLeaflet() {
   const [geoData, setGeoData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [selectedCountry, setSelectedCountry] = useState('India');
-  const [selectedMonth, setSelectedMonth] = useState('February');
   const [reFilter, setReFilter] = useState('All');
   const [selectedVintage, setSelectedVintage] = useState('');
 
@@ -103,6 +102,10 @@ export default function MarketMapLeaflet() {
   const textColor = useColorModeValue('gray.800', 'white');
   const borderColor = useColorModeValue('gray.200', '#222E5F');
   const sidePanelBg = useColorModeValue('gray.50', '#1B254B');
+  const currentMonthName = new Intl.DateTimeFormat('en-US', {
+    month: 'long',
+  }).format(new Date());
+  const [selectedMonth, setSelectedMonth] = useState(currentMonthName);
 
   useEffect(() => {
     const fetchAllData = async () => {
