@@ -18,13 +18,32 @@ exports.sendOtp = async (req, res) => {
     if (!email) return res.status(400).json({ message: "Email is required" });
 
     const normalizedEmail = email.trim().toLowerCase();
+    const domain = normalizedEmail.split("@")[1];
 
-    // 1. Check if user exists
+    // 1. MANUAL CONTROLLER CHECK (Gmail/Yahoo Block)
+    // Yeh sabse pehle block karega, bina DB hit kiye
+    const blockedDomains = [
+      "gmail.com",
+      "yahoo.com",
+      "hotmail.com",
+      "outlook.com",
+      "icloud.com",
+      "aol.com",
+      "zoho.com",
+      "ymail.com",
+    ];
+
+    if (blockedDomains.includes(domain)) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Registration failed: Only corporate emails are allowed. Personal providers like Gmail/Yahoo are blocked.",
+      });
+    }
+
+    // 2. Check if user exists and is already verified
     const user = await User.findOne({ email: normalizedEmail });
 
-    // 2. Sirf tabhi block karo jab user FULLY REGISTERED (Verified) ho
-    // Agar isEmailVerified false hai, toh matlab user ne beech mein process chhod diya tha,
-    // use hum naya OTP bhej kar aage badhne denge.
     if (user && user.isEmailVerified) {
       return res.status(400).json({
         success: false,
@@ -33,60 +52,67 @@ exports.sendOtp = async (req, res) => {
       });
     }
 
-    // 3. OTP Generate karo
+    // 3. OTP Generation
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    const expiry = new Date(Date.now() + 10 * 60 * 1000);
+    const expiry = new Date(Date.now() + 10 * 60 * 1000); // 10 Min expiry
 
-    // 4. UPSERT Logic with Validators
-    // CRITICAL CHANGE: runValidators: true taaki Gmail/Yahoo block logic kaam kare
+    // 4. UPSERT LOGIC
+    // Humne context: 'query' add kiya hai taaki Mongoose update validators ko sahi se handle kare
     await User.findOneAndUpdate(
       { email: normalizedEmail },
       {
-        otp: otp,
-        otpExpires: expiry,
-        isEmailVerified: false, // Step 2 verify hone tak false hi rakhein
+        $set: {
+          otp: otp,
+          otpExpires: expiry,
+          isEmailVerified: false,
+        },
       },
       {
         upsert: true,
         new: true,
+        runValidators: true,
         setDefaultsOnInsert: true,
-        runValidators: true, // <--- Isse Schema validation (Gmail block) trigger hoga
+        context: "query", // Yeh zaroori hai update validators ke liye
       },
     );
 
-    console.log(`OTP generated for ${normalizedEmail}: ${otp}`);
+    console.log(`OTP for ${normalizedEmail}: ${otp}`);
 
     // 5. Email Sending
     await transporter.sendMail({
       from: '"Hestiya Intelligence" <connect@hestiya.com>',
       to: normalizedEmail,
       subject: "Verification Code - Hestiya Intelligence",
-      html: `<h3>Hello,<br/><br/>Your OTP for Hestiya Intelligence is: <b>${otp}</b></h3><p>Valid for 10 minutes.</p>`,
+      html: `
+        <div style="font-family: Arial, sans-serif; padding: 20px; border: 1px solid #eee;">
+          <h2 style="color: #48BB78;">Hestiya Intelligence</h2>
+          <p>Hello,</p>
+          <p>Your verification code is: <b style="font-size: 24px; color: #333;">${otp}</b></p>
+          <p>This code is valid for <b>10 minutes</b>. Please do not share this OTP with anyone.</p>
+          <hr style="border: 0; border-top: 1px solid #eee;" />
+          <p style="font-size: 12px; color: #888;">If you didn't request this, please ignore this email.</p>
+        </div>
+      `,
     });
 
-    return res.json({
+    return res.status(200).json({
       success: true,
-      message: "OTP sent successfully.",
+      message: "OTP sent successfully to your corporate email.",
     });
   } catch (err) {
-    console.error("ERROR in sendOtp:", err.message);
+    console.error("ERROR in sendOtp:", err);
 
-    // Agar validation fail hui (e.g. Gmail domain), toh specific message bhejenge
-    if (
-      err.name === "ValidationError" ||
-      err.message.includes("validation failed")
-    ) {
+    // Mongoose Validation Error Handling
+    if (err.name === "ValidationError" || err.code === 11000) {
       return res.status(400).json({
         success: false,
-        message:
-          "Only corporate emails are allowed (Gmail, Yahoo, etc. are blocked).",
+        message: "Invalid email or corporate policy violation.",
       });
     }
 
     return res.status(500).json({
       success: false,
-      message: "Server Connection Error",
-      error: err.message,
+      message: "Internal Server Error. Please try again later.",
     });
   }
 };

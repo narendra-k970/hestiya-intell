@@ -1,27 +1,35 @@
 const mongoose = require("mongoose");
 
+// Blocked public email providers list
+const BLOCKED_DOMAINS = [
+  "gmail.com",
+  "yahoo.com",
+  "hotmail.com",
+  "outlook.com",
+  "icloud.com",
+  "aol.com",
+  "zoho.com",
+  "protonmail.com",
+  "ymail.com",
+  "live.com",
+];
+
 const userSchema = new mongoose.Schema(
   {
     email: {
       type: String,
-      required: true,
+      required: [true, "Email is required"],
       unique: true,
       lowercase: true,
       trim: true,
       validate: {
         validator: function (v) {
+          if (!v || !v.includes("@")) return false;
           const domain = v.split("@")[1].toLowerCase();
-          const blocked = [
-            "gmail.com",
-            "yahoo.com",
-            "hotmail.com",
-            "outlook.com",
-            "icloud.com",
-          ];
-          return !blocked.includes(domain);
+          return !BLOCKED_DOMAINS.includes(domain);
         },
         message: (props) =>
-          `${props.value} is not a corporate email. Please use your company email!`,
+          `Access Denied: ${props.value} is a personal email. Please use your official corporate email address.`,
       },
     },
     password: { type: String, default: null },
@@ -54,7 +62,26 @@ const userSchema = new mongoose.Schema(
     countryOfIncorporation: { type: String, trim: true, default: "" },
     reason: { type: String, trim: true, default: "" },
   },
-  { timestamps: true },
+  {
+    timestamps: true,
+    // Ensure virtuals and getters are included when converting to JSON
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true },
+  },
 );
+
+// --- CRITICAL FIX: Pre-save Middleware ---
+// Yeh ensure karega ki save hone se pehle validation trigger ho
+userSchema.pre("save", function (next) {
+  const domain = this.email.split("@")[1].toLowerCase();
+  if (BLOCKED_DOMAINS.includes(domain)) {
+    const error = new Error("Personal email domains are strictly prohibited.");
+    return next(error);
+  }
+  next();
+});
+
+// Indexing for faster search (Optional but recommended)
+userSchema.index({ email: 1 });
 
 module.exports = mongoose.models.User || mongoose.model("User", userSchema);
