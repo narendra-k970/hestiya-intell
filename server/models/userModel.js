@@ -71,14 +71,30 @@ const userSchema = new mongoose.Schema(
 );
 
 // --- CRITICAL FIX: Pre-save Middleware ---
-// Yeh ensure karega ki save hone se pehle validation trigger ho
-userSchema.pre("save", function (next) {
-  const domain = this.email.split("@")[1].toLowerCase();
-  if (BLOCKED_DOMAINS.includes(domain)) {
-    const error = new Error("Personal email domains are strictly prohibited.");
-    return next(error);
+// --- PRE-SAVE MIDDLEWARE (MODERN ASYNC VERSION) ---
+userSchema.pre("save", async function () {
+  // 1. Agar email change nahi hua hai, toh validation skip karein
+  // Isse verify-otp ke waqt faltu validation nahi chalegi
+  if (!this.isModified("email")) return;
+
+  const domain = this.email.split("@")[1]?.toLowerCase();
+
+  const BLOCKED_DOMAINS = [
+    "gmail.com",
+    "yahoo.com",
+    "hotmail.com",
+    "outlook.com",
+    "icloud.com",
+    "aol.com",
+    "zoho.com",
+    "protonmail.com",
+    "ymail.com",
+  ];
+
+  if (domain && BLOCKED_DOMAINS.includes(domain)) {
+    // Async middleware mein hum direct error throw karte hain, next(error) nahi
+    throw new Error("Personal email domains are strictly prohibited.");
   }
-  next();
 });
 
 // Indexing for faster search (Optional but recommended)

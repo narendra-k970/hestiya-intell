@@ -20,8 +20,7 @@ exports.sendOtp = async (req, res) => {
     const normalizedEmail = email.trim().toLowerCase();
     const domain = normalizedEmail.split("@")[1];
 
-    // 1. MANUAL CONTROLLER CHECK (Gmail/Yahoo Block)
-    // Yeh sabse pehle block karega, bina DB hit kiye
+    // 1. Manual Domain Check
     const blockedDomains = [
       "gmail.com",
       "yahoo.com",
@@ -32,39 +31,38 @@ exports.sendOtp = async (req, res) => {
       "zoho.com",
       "ymail.com",
     ];
-
     if (blockedDomains.includes(domain)) {
       return res.status(400).json({
         success: false,
-        message:
-          "Registration failed: Only corporate emails are allowed. Personal providers like Gmail/Yahoo are blocked.",
+        message: "Registration failed: Only corporate emails are allowed.",
       });
     }
 
-    // 2. Check if user exists and is already verified
+    // 2. SMART CHECK: Pehle user dhoondo
     const user = await User.findOne({ email: normalizedEmail });
 
-    if (user && user.isEmailVerified) {
+    // Agar user mil gaya AUR KYC bhi completed hai, sirf tabhi block karein
+    if (user && user.isKycCompleted) {
       return res.status(400).json({
         success: false,
-        message:
-          "This email is already registered and verified. Please sign in.",
+        message: "This email is already registered. Please sign in.",
       });
     }
 
     // 3. OTP Generation
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    const expiry = new Date(Date.now() + 10 * 60 * 1000); // 10 Min expiry
+    const expiry = new Date(Date.now() + 10 * 60 * 1000);
 
-    // 4. UPSERT LOGIC
-    // Humne context: 'query' add kiya hai taaki Mongoose update validators ko sahi se handle kare
+    // 4. UPSERT/UPDATE LOGIC
+    // Agar user pehle se hai (par KYC pending hai), toh ye sirf OTP update karega
+    // Agar naya hai, toh upsert karega
     await User.findOneAndUpdate(
       { email: normalizedEmail },
       {
         $set: {
           otp: otp,
           otpExpires: expiry,
-          isEmailVerified: false,
+          isEmailVerified: false, // Re-verify ki condition reset karein
         },
       },
       {
@@ -72,7 +70,7 @@ exports.sendOtp = async (req, res) => {
         new: true,
         runValidators: true,
         setDefaultsOnInsert: true,
-        context: "query", // Yeh zaroori hai update validators ke liye
+        context: "query",
       },
     );
 
@@ -88,58 +86,57 @@ exports.sendOtp = async (req, res) => {
           <h2 style="color: #48BB78;">Hestiya Intelligence</h2>
           <p>Hello,</p>
           <p>Your verification code is: <b style="font-size: 24px; color: #333;">${otp}</b></p>
-          <p>This code is valid for <b>10 minutes</b>. Please do not share this OTP with anyone.</p>
-          <hr style="border: 0; border-top: 1px solid #eee;" />
-          <p style="font-size: 12px; color: #888;">If you didn't request this, please ignore this email.</p>
+          <p>This code is valid for <b>10 minutes</b>. Please use this to complete your registration.</p>
         </div>
       `,
     });
 
     return res.status(200).json({
       success: true,
-      message: "OTP sent successfully to your corporate email.",
+      message: "OTP sent successfully. Please check your corporate email.",
     });
   } catch (err) {
     console.error("ERROR in sendOtp:", err);
-
-    // Mongoose Validation Error Handling
-    if (err.name === "ValidationError" || err.code === 11000) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid email or corporate policy violation.",
-      });
-    }
-
-    return res.status(500).json({
-      success: false,
-      message: "Internal Server Error. Please try again later.",
-    });
+    return res
+      .status(500)
+      .json({ success: false, message: "Internal Server Error." });
   }
 };
 // --- 2. VERIFY OTP ---
 exports.verifyOtp = async (req, res) => {
-  const { email, otp } = req.body;
   try {
-    const user = await User.findOne({ email: email.toLowerCase() });
-    if (!user || user.otp !== otp || user.otpExpires < Date.now()) {
-      return res.status(400).json({ message: "Invalid or expired OTP" });
+    const { email, otp } = req.body;
+    const normalizedEmail = email.trim().toLowerCase();
+    const user = await User.findOne({ email: normalizedEmail });
+
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    // OTP Match logic
+    if (user.otp !== otp.toString().trim()) {
+      return res.status(400).json({ message: "Invalid OTP" });
     }
 
     user.isEmailVerified = true;
-    user.otp = undefined;
-    user.otpExpires = undefined;
+    user.otp = null;
+    user.otpExpires = null;
+
+    // SAVE CALL
     await user.save({ validateBeforeSave: false });
 
-    res.json({
+    return res.status(200).json({
       success: true,
-      isKycPending: !user.isKycCompleted,
       message: "OTP Verified successfully.",
     });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    console.error("VERIFY-OTP ERROR:", err.message);
+
+    // Agar model ne "Personal email" wala error throw kiya hai toh woh yahan pakda jayega
+    return res.status(400).json({
+      success: false,
+      message: err.message || "Internal Server Error",
+    });
   }
 };
-
 // --- 3. COMPLETE KYC & SET PASSWORD ---
 exports.completeKycAndSignup = async (req, res) => {
   const { email, password, ...kycData } = req.body;

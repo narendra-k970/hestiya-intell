@@ -98,19 +98,17 @@ const AuthForm = () => {
   const handleVerifyOtp = async () => {
     setLoading(true);
     try {
-      // 3. Updated to use 'api' and short endpoint
       const response = await api.post('/user/verify-otp', {
-        email: formData.email,
-        otp: formData.otp,
+        email: formData.email.trim().toLowerCase(),
+        otp: formData.otp.toString().trim(),
       });
-      toast({ title: 'Verified Successfully', status: 'success' });
-      if (response.data.isKycPending) {
-        setStep(3);
-      } else {
-        navigate('/auth/sign-in');
-      }
+
+      toast({ title: 'Email Verified Successfully', status: 'success' }); // FIX: Navigate nahi karna hai, Step 3 (KYC) par bhejnan hai
+
+      setStep(3);
     } catch (err) {
-      toast({ title: 'Invalid OTP', status: 'error' });
+      const errorMsg = err.response?.data?.message || 'Invalid OTP';
+      toast({ title: errorMsg, status: 'error' });
     }
     setLoading(false);
   };
