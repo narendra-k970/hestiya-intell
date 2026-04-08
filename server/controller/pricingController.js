@@ -129,3 +129,109 @@ exports.getMarketPricing = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
+exports.getSingleCountryAvg = async (req, res) => {
+  try {
+    const { country } = req.query;
+
+    if (!country) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Country is required" });
+    }
+
+    const averages = await Pricing.aggregate([
+      {
+        // STEP 1: Pehle hi filter karlo taaki load kam ho
+        $match: { Country: country },
+      },
+      {
+        // STEP 2: Grouping by Month
+        $group: {
+          _id: {
+            month: "$Month",
+            country: "$Country",
+          },
+          avgPrice: { $avg: "$Rate" },
+        },
+      },
+      {
+        // STEP 3: Formatting
+        $project: {
+          _id: 0,
+          country: "$_id.country",
+          month: "$_id.month",
+          avgPrice: { $round: ["$avgPrice", 2] },
+        },
+      },
+      {
+        // STEP 4: Latest month sabse upar
+        $sort: { month: -1 },
+      },
+      {
+        // STEP 5: Sirf latest month ka data chahiye
+        $limit: 1,
+      },
+    ]);
+
+    res.status(200).json({
+      success: true,
+      data: averages.length > 0 ? averages[0] : null,
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+exports.getSingleCountryAvg = async (req, res) => {
+  try {
+    const { country } = req.query;
+
+    if (!country) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Country is required" });
+    }
+
+    const averages = await Pricing.aggregate([
+      {
+        // STEP 1: Pehle hi filter karlo taaki load kam ho
+        $match: { Country: country },
+      },
+      {
+        // STEP 2: Grouping by Month
+        $group: {
+          _id: {
+            month: "$Month",
+            country: "$Country",
+          },
+          avgPrice: { $avg: "$Rate" },
+        },
+      },
+      {
+        // STEP 3: Formatting
+        $project: {
+          _id: 0,
+          country: "$_id.country",
+          month: "$_id.month",
+          avgPrice: { $round: ["$avgPrice", 2] },
+        },
+      },
+      {
+        // STEP 4: Latest month sabse upar
+        $sort: { month: -1 },
+      },
+      {
+        // STEP 5: Sirf latest month ka data chahiye
+        $limit: 1,
+      },
+    ]);
+
+    res.status(200).json({
+      success: true,
+      data: averages.length > 0 ? averages[0] : null,
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
