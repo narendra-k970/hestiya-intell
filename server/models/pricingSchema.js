@@ -5,7 +5,7 @@ const PricingSchema = new mongoose.Schema(
     Country: { type: String, required: true },
     Month: { type: String, required: true },
     Vintage: { type: String, required: true },
-    Technology: { type: String }, // 'Type' ko 'Technology' kar diya
+    Technology: { type: String },
     Rate: { type: Number, required: true },
     isRE100: { type: String, enum: ["Yes", "No"], default: "No" },
     addedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },

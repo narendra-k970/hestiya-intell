@@ -16,14 +16,23 @@ exports.protect = async (req, res, next) => {
       .json({ message: "Not authorized to access this route" });
   }
 
+  // server/middleware/authMiddleware.js
   try {
-    const decoded = jwt.verify(
-      token,
-      process.env.JWT_SECRET || "your_secret_key",
-    );
-    req.user = decoded; // Token से यूजर की ID req.user में सेव हो जाएगी
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    req.user = decoded;
     next();
   } catch (err) {
-    return res.status(401).json({ message: "Token is not valid" });
+    // Agar token purana ho gaya hai
+    if (err.name === "TokenExpiredError") {
+      return res.status(401).json({
+        success: false,
+        message: "Your session has expired. Please login again.",
+      });
+    }
+    // Agar token galat ya tampered hai
+    return res.status(401).json({
+      success: false,
+      message: "Invalid token. Access denied.",
+    });
   }
 };
