@@ -98,6 +98,6 @@ userSchema.pre("save", async function () {
 });
 
 // Indexing for faster search (Optional but recommended)
-userSchema.index({ email: 1 });
+// userSchema.index({ email: 1 });
 
 module.exports = mongoose.models.User || mongoose.model("User", userSchema);

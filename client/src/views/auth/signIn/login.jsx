@@ -48,45 +48,25 @@ const Login = () => {
       const res = await api.post('/user/login', credentials);
       const { user, token } = res.data;
 
-      // 1. Token aur User data save karein
-      localStorage.setItem('token', token);
+      localStorage.setItem('token', token || 'dummy_token');
       localStorage.setItem('user', JSON.stringify(user));
 
-      // 2. CRITICAL: Axios instance ko naya token turant bataein
-      // Isse 'No Token Found' wala error nahi aayega jab aap profile pe click karenge
-      api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      toast({ title: 'Login Success', status: 'success', duration: 3000 });
 
-      toast({
-        title: 'Login Success',
-        description: `Welcome back, ${user.firstName}!`,
-        status: 'success',
-        duration: 3000,
-        isClosable: true,
-      });
-
-      // 3. Role ke basis par sahi dashboard par bhejein
+      // Sahi raste pe bhejo (Jo humne pehle fix kiya tha)
       if (user.role === 'admin') {
         navigate('/admin/default');
       } else {
         navigate('/user/default');
       }
     } catch (err) {
-      // Detailed error handling
-      const errorMessage =
-        err.response?.data?.message || 'Invalid Email or Password';
-
       toast({
         title: 'Login Failed',
-        description: errorMessage,
+        description: err.response?.data?.message || 'Invalid Credentials',
         status: 'error',
-        duration: 4000,
-        isClosable: true,
       });
-
-      console.error('Login Error Details:', err.response?.data);
-    } finally {
-      setLoading(false);
     }
+    setLoading(false);
   };
 
   return (
