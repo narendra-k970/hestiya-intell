@@ -185,27 +185,35 @@ exports.completeKycAndSignup = async (req, res) => {
 exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
-    const user = await User.findOne({ email: email.toLowerCase() });
 
+    // Email normalization
+    const normalizedEmail = email ? email.trim().toLowerCase() : "";
+    const user = await User.findOne({ email: normalizedEmail });
+
+    // 1. Generic Error (Security Tip: Don't use 404 here)
     if (!user) {
-      return res.status(404).json({ message: "User not found" });
+      return res.status(401).json({ message: "Invalid email or password" });
     }
 
+    // 2. KYC Check (Pehle ki tarah sahi hai)
     if (user.role !== "admin" && !user.isKycCompleted) {
-      return res.status(400).json({
+      return res.status(403).json({
+        // 403 Forbidden is better here
         message: "Please complete your KYC first.",
         isKycPending: true,
       });
     }
 
+    // 3. Password Match
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
-      return res.status(400).json({ message: "Invalid credentials" });
+      return res.status(401).json({ message: "Invalid email or password" });
     }
 
+    // 4. Token generation
     const token = jwt.sign(
       { id: user._id, role: user.role || "user" },
-      process.env.JWT_SECRET || "your_secret_key",
+      process.env.JWT_SECRET, // Fallback hata dein prod ke liye
       { expiresIn: "1d" },
     );
 
@@ -219,6 +227,7 @@ exports.login = async (req, res) => {
       },
     });
   } catch (err) {
+    console.error("Login Error:", err.message);
     res.status(500).json({ message: "Internal Server Error" });
   }
 };

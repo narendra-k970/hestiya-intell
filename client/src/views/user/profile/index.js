@@ -37,18 +37,35 @@ export default function UserProfile() {
 
   useEffect(() => {
     const fetchProfile = async () => {
+      // 1. Check karein ki localStorage mein token hai ya nahi
+      const token = localStorage.getItem('token');
+
+      if (!token) {
+        // Agar token hi nahi hai, toh seedha error set karein ya login par bhejein
+        setError('No active session found. Please login.');
+        setLoading(false);
+        return;
+      }
+
       try {
         setLoading(true);
+
+        // 2. Profile fetch karein
+        // Note: Humara axiosConfig ka request interceptor apne aap headers mein token daal dega
         const response = await api.get('/user/profile');
+
         if (response.data.success) {
           setUser(response.data.user);
         }
       } catch (err) {
+        // Agar refresh par backend 401 deta hai, toh axiosConfig khud logout kar dega
+        // Lekin yahan hum generic error UI dikhane ke liye catch karte hain
         setError(err.response?.data?.message || 'Failed to load profile');
       } finally {
         setLoading(false);
       }
     };
+
     fetchProfile();
   }, []);
 

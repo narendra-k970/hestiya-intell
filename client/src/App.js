@@ -11,11 +11,23 @@ export default function Main() {
   const [currentTheme, setCurrentTheme] = useState(initialTheme);
   const location = useLocation();
 
-  const [auth, setAuth] = useState({
-    isAuthenticated: localStorage.getItem('token') !== null,
-    role: localStorage.getItem('user')
-      ? JSON.parse(localStorage.getItem('user')).role
-      : null,
+  const [auth, setAuth] = useState(() => {
+    const token = localStorage.getItem('token');
+    const userJson = localStorage.getItem('user');
+
+    let role = null;
+    if (userJson) {
+      try {
+        role = JSON.parse(userJson).role;
+      } catch (e) {
+        console.error('Error parsing user from localStorage', e);
+      }
+    }
+
+    return {
+      isAuthenticated: !!token, // !! se ye boolean (true/false) ban jayega
+      role: role,
+    };
   });
 
   // Jab bhi location badle, storage se auth state sync karo
