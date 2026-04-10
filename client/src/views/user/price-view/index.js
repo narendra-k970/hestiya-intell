@@ -105,20 +105,35 @@ export default function MarketMapLeaflet() {
   const currentMonthName = new Intl.DateTimeFormat('en-US', {
     month: 'long',
   }).format(new Date());
-  const [selectedMonth, setSelectedMonth] = useState(currentMonthName);
+  const [selectedMonth, setSelectedMonth] = useState();
 
   useEffect(() => {
     const fetchAllData = async () => {
       try {
         const [res, geoRes] = await Promise.all([
-          api.get('/pricing/country-avg'), // New Optimized API
+          api.get('/pricing/country-avg'),
           axios.get(
             'https://raw.githubusercontent.com/johan/world.geo.json/master/countries.geo.json',
           ),
         ]);
-        setData(res.data.data || []);
-        console.log(res.data.data);
+        const marketData = res.data.data || [];
+        setData(marketData);
         setGeoData(geoRes.data);
+
+        // --- YE ADD KAREIN ---
+        const months = [
+          ...new Set(marketData.map((item) => item.month)),
+        ].filter(Boolean);
+        const currentMonth = new Intl.DateTimeFormat('en-US', {
+          month: 'long',
+        }).format(new Date());
+
+        if (months.includes(currentMonth)) {
+          setSelectedMonth(currentMonth);
+        } else if (months.length > 0) {
+          setSelectedMonth(months[0]); // Fallback to first available month
+        }
+        // ---------------------
       } catch (err) {
         console.error('Fetch error:', err);
       } finally {
@@ -141,7 +156,10 @@ export default function MarketMapLeaflet() {
   const selectedInfo = useMemo(() => {
     const selCountry = selectedCountry.toLowerCase().trim();
 
-    // 1. Current Month Filtered Data
+    // 1. Initial Check
+    if (!data.length || !selectedMonth) return null;
+
+    // 2. Current Month Filtered Data
     const filtered = data.filter((item) => {
       return (
         (item.country || '').toLowerCase().trim() === selCountry &&
@@ -152,21 +170,20 @@ export default function MarketMapLeaflet() {
 
     if (filtered.length === 0) return null;
 
-    // 2. Market Average (All Vintages)
+    // 3. Market Average (Isse variable scope fix ho jayega)
     const currentPrice =
       filtered.reduce((acc, curr) => acc + (curr.avgPrice || 0), 0) /
       filtered.length;
 
-    // 3. Vintage Specific Logic
+    // 4. Vintage Specific Logic
     const availableVintages = [...new Set(filtered.map((item) => item.vintage))]
       .filter(Boolean)
       .sort();
 
-    // Auto-select first vintage if none selected or selection invalid
     const activeVintage =
       selectedVintage && availableVintages.includes(selectedVintage)
         ? selectedVintage
-        : availableVintages[0] || '';
+        : availableVintages[availableVintages.length - 1] || '';
 
     const vintageEntries = filtered.filter((f) => f.vintage === activeVintage);
     const vintageAvgPrice =
@@ -175,31 +192,30 @@ export default function MarketMapLeaflet() {
           vintageEntries.length
         : 0;
 
-    // 4. Premium vs Discount Calculation
+    // 5. Premium vs Discount Calculation
     const priceDiffPercent =
       currentPrice > 0
         ? ((vintageAvgPrice - currentPrice) / currentPrice) * 100
         : 0;
 
-    // 5. Monthly Comparison Logic (Previous Month)
+    // 6. Monthly Comparison Logic (Previous Month)
     const prevMonthIdx = getMonthOrder(selectedMonth);
-    const prevMonthName =
-      prevMonthIdx > 0
-        ? [
-            'January',
-            'February',
-            'March',
-            'April',
-            'May',
-            'June',
-            'July',
-            'August',
-            'September',
-            'October',
-            'November',
-            'December',
-          ][prevMonthIdx - 1]
-        : null;
+    const monthsArr = [
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December',
+    ];
+
+    const prevMonthName = prevMonthIdx > 0 ? monthsArr[prevMonthIdx - 1] : null;
 
     const prevFiltered = data.filter((item) => {
       return (
@@ -213,7 +229,7 @@ export default function MarketMapLeaflet() {
       prevFiltered.length > 0
         ? prevFiltered.reduce((acc, curr) => acc + (curr.avgPrice || 0), 0) /
           prevFiltered.length
-        : currentPrice;
+        : currentPrice; // Fallback to current price if no previous data
 
     const trendDiff = currentPrice - prevPrice;
 
@@ -243,7 +259,6 @@ export default function MarketMapLeaflet() {
       ].filter(Boolean),
     };
   }, [data, selectedCountry, selectedMonth, reFilter, selectedVintage]);
-
   if (loading)
     return (
       <Flex justify="center" align="center" h="100vh" bg={bg}>
