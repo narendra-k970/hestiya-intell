@@ -167,18 +167,58 @@ export default function UserMarketDashboard() {
   }, []);
 
   // Ye filters ko ignore karke hamesha pure data ke top 20 dikhayega
+  const filteredData = useMemo(() => {
+    return allData
+      .map((p) => {
+        // Commissioning Year threshold logic (>= 2014 is RE100)
+        // Null or missing commYear is treated as Non-RE100
+        const cYear = parseInt(p.commYear || 0);
+        const isPlantRE100 = cYear >= 2014;
+
+        // Total volume is the sum of all issuances for the plant
+        const dynamicVol = (p.issuances || []).reduce(
+          (acc, curr) => acc + (Number(curr.issuanceVolume) || 0),
+          0,
+        );
+
+        return { ...p, dynamicVol, isPlantRE100 };
+      })
+      .filter((p) => {
+        if (p.dynamicVol <= 0) return false;
+
+        const matchC = countryFilter === 'All' || p.country === countryFilter;
+
+        // Match RE Status based on Commissioning Year
+        const matchRE =
+          reStatus === 'All'
+            ? true
+            : reStatus === 'RE-100'
+              ? p.isPlantRE100
+              : !p.isPlantRE100;
+
+        const matchT =
+          techFilter === 'All'
+            ? true
+            : (p.technology || '')
+                .toLowerCase()
+                .includes(techFilter.toLowerCase());
+
+        return matchC && matchRE && matchT;
+      })
+      .sort((a, b) => b.dynamicVol - a.dynamicVol);
+  }, [allData, reStatus, techFilter, countryFilter]);
+
+  // Update Global Leaderboard to honor filters
   const globalTop20 = useMemo(() => {
-    return [...allData]
-      .sort((a, b) => (b.totalVol || 0) - (a.totalVol || 0))
-      .slice(0, 20);
-  }, [allData]);
+    return [...filteredData].slice(0, 20);
+  }, [filteredData]);
 
   const handleCountryChange = async (e) => {
     const country = e.target.value;
     setCountryFilter(country);
     setGeoData(null);
     if (country === 'All') {
-      mapRef.current.flyTo([20, 20], 3);
+      if (mapRef.current) mapRef.current.flyTo([20, 20], 3);
     } else {
       try {
         const geoRes = await fetch(
@@ -207,29 +247,8 @@ export default function UserMarketDashboard() {
     setTechFilter('All');
     setCountryFilter('All');
     setGeoData(null);
-    mapRef.current.flyTo([20, 20], 3);
+    if (mapRef.current) mapRef.current.flyTo([20, 20], 3);
   };
-
-  const filteredData = useMemo(() => {
-    return allData
-      .filter((p) => {
-        const matchC = countryFilter === 'All' || p.country === countryFilter;
-        const matchRE =
-          reStatus === 'All'
-            ? true
-            : reStatus === 'RE-100'
-              ? p.isRE100_Strict
-              : !p.isRE100_Strict;
-        const matchT =
-          techFilter === 'All'
-            ? true
-            : (p.technology || '')
-                .toLowerCase()
-                .includes(techFilter.toLowerCase());
-        return matchC && matchRE && matchT;
-      })
-      .sort((a, b) => b.totalVol - a.totalVol);
-  }, [allData, reStatus, techFilter, countryFilter]);
 
   if (isInitialLoading)
     return (
@@ -453,7 +472,7 @@ export default function UserMarketDashboard() {
                                   fontWeight="900"
                                   color={BRAND_GREEN}
                                 >
-                                  {Math.round(p.totalVol).toLocaleString()}
+                                  {Math.round(p.dynamicVol).toLocaleString()}
                                 </Text>
                               </HStack>
 
@@ -519,7 +538,7 @@ export default function UserMarketDashboard() {
                 <HStack justify="space-between" mt={1}>
                   <Text fontSize="9px">{p.country}</Text>
                   <Text fontSize="10px" fontWeight="900">
-                    {Math.round(p.totalVol).toLocaleString()}
+                    {Math.round(p.dynamicVol).toLocaleString()}
                   </Text>
                 </HStack>
               </Box>
@@ -598,11 +617,11 @@ export default function UserMarketDashboard() {
                   </Td>
                   <Td>
                     <Badge
-                      colorScheme={p.isRE100_Strict ? 'green' : 'orange'}
+                      colorScheme={p.isPlantRE100 ? 'green' : 'orange'}
                       variant="outline"
                       fontSize="9px"
                     >
-                      {p.isRE100_Strict ? 'RE100' : 'NON-RE'}
+                      {p.isPlantRE100 ? 'RE100' : 'NON-RE'}
                     </Badge>
                   </Td>
                   <Td
@@ -611,7 +630,7 @@ export default function UserMarketDashboard() {
                     fontSize="11px"
                     color={BRAND_GREEN}
                   >
-                    {Math.round(p.totalVol).toLocaleString()}
+                    {Math.round(p.dynamicVol).toLocaleString()}
                   </Td>
                 </Tr>
               ))}

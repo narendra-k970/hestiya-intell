@@ -141,7 +141,9 @@ exports.verifyOtp = async (req, res) => {
 exports.completeKycAndSignup = async (req, res) => {
   const { email, password, ...kycData } = req.body;
   try {
-    const user = await User.findOne({ email: email.toLowerCase() });
+    const normalizedEmail = email.toLowerCase().trim();
+    const user = await User.findOne({ email: normalizedEmail });
+
     if (!user || !user.isEmailVerified) {
       return res
         .status(400)
@@ -158,7 +160,7 @@ exports.completeKycAndSignup = async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, salt);
 
     const updatedUser = await User.findOneAndUpdate(
-      { email: email.toLowerCase() },
+      { email: normalizedEmail },
       {
         ...kycData,
         password: hashedPassword,
@@ -166,6 +168,41 @@ exports.completeKycAndSignup = async (req, res) => {
       },
       { new: true },
     );
+
+    // --- WELCOME EMAIL LOGIC START ---
+    try {
+      await transporter.sendMail({
+        from: '"Hestiya Intelligence" <connect@hestiya.com>',
+        to: normalizedEmail,
+        subject: "Welcome to Hestiya Intelligence - Account Activated",
+        html: `
+          <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: auto; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden;">
+            <div style="background-color: #48BB78; padding: 30px; text-align: center;">
+              <h1 style="color: white; margin: 0; font-size: 24px;">Welcome to Hestiya Intelligence</h1>
+            </div>
+            <div style="padding: 30px; color: #2d3748; line-height: 1.6;">
+              <p style="font-size: 18px;">Hello <b>${updatedUser.firstName || "Partner"}</b>,</p>
+              <p>Congratulations! Your corporate account has been successfully verified and activated.</p>
+              <p>You now have full access to <b>Hestiya Market Intelligence</b>, where you can track I-REC pricing, analyze global market trends, and manage your sustainability certificates seamlessly.</p>
+              
+              <div style="text-align: center; margin: 30px 0;">
+                <a href="https://hestiya.com/auth/sign-in" style="background-color: #48BB78; color: white; padding: 12px 25px; text-decoration: none; borderRadius: 8px; font-weight: bold; display: inline-block;">Explore Dashboard</a>
+              </div>
+
+              <p style="font-size: 14px; color: #718096; margin-top: 40px; border-top: 1px solid #edf2f7; pt: 20px;">
+                If you have any questions, feel free to reply to this email or contact our support team at connect@hestiya.com.
+              </p>
+              <p style="font-size: 14px; color: #718096;">Best Regards,<br><b>The Hestiya Team</b></p>
+            </div>
+          </div>
+        `,
+      });
+      console.log(`Welcome email sent to: ${normalizedEmail}`);
+    } catch (mailErr) {
+      // Email fail hone par response mat rokiye, sirf log karein
+      console.error("Welcome Email Sending Failed:", mailErr);
+    }
+    // --- WELCOME EMAIL LOGIC END ---
 
     res.json({
       success: true,
@@ -177,6 +214,7 @@ exports.completeKycAndSignup = async (req, res) => {
       },
     });
   } catch (err) {
+    console.error("KYC ERROR:", err);
     res.status(500).json({ message: err.message });
   }
 };
