@@ -19,9 +19,19 @@ exports.saveIrecData = async (req, res) => {
         latitude: parseFloat(item.LATITUDE || item.latitude) || null,
         longitude: parseFloat(item.LONGITUDE || item.longitude) || null,
         status: item.STATUS || item.status,
-        commYear: parseInt(item.COMM_YEAR || item.commYear) || null,
+        commYear: (() => {
+          const cy = parseInt(item.COMM_YEAR || item.COMMYEAR || item["COMMISSIONING YEAR"] || item.commYear || item.year);
+          if (!isNaN(cy)) return cy;
+          // Extract from commissioningDate
+          const cd = item.COMMISSIONING || item.commissioningDate;
+          if (cd) {
+            const m = String(cd).match(/\d{4}/);
+            if (m) return parseInt(m[0]);
+          }
+          return null;
+        })(),
         commissioningDate: item.COMMISSIONING || item.commissioningDate,
-        isRE100: String(item["is RE 100"] || item.isRE100)
+        isRE100: String(item["is RE 100"] || item["isRE100"] || item.isRE100)
           .toLowerCase()
           .includes("yes"),
       };

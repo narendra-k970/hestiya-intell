@@ -116,8 +116,25 @@ export default function IrecManagement() {
             latitude: parseFloat(getV(['Latitude'])),
             longitude: parseFloat(getV(['Longitude'])),
             status: getV(['Status']),
-            commYear: parseInt(getV(['COMMISSIONINGYEAR', 'commYear'])),
-            isRE100: String(getV(['isRE100']))
+            commYear: (() => {
+              const cy = getV([
+                'COMMISSIONING YEAR',
+                'COMM YEAR',
+                'COMMISSIONINGYEAR',
+                'COMMYEAR',
+                'YEAR',
+                'commYear',
+              ]);
+              if (cy && !isNaN(parseInt(cy))) return parseInt(cy);
+              // Fallback to extraction from date string
+              const cd = getV(['CommissioningDate', 'COMMISSIONING']);
+              if (cd) {
+                const m = String(cd).match(/\d{4}/);
+                if (m) return parseInt(m[0]);
+              }
+              return null;
+            })(),
+            isRE100: String(getV(['isRE100', 'is RE 100']))
               .toLowerCase()
               .includes('yes'),
           };

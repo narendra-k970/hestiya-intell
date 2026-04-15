@@ -128,16 +128,30 @@ export default function UserMarketDashboard() {
 
           if (res.data.success && isMounted) {
             const processed = res.data.data
-              .map((p) => ({
-                ...p,
-                fLat: parseFloat(p.latitude),
-                fLng: parseFloat(p.longitude),
-                isRE100_Strict: p.isRE100 === true,
-                totalVol: (p.issuances || []).reduce(
-                  (acc, curr) => acc + (Number(curr.issuanceVolume) || 0),
-                  0,
-                ),
-              }))
+              .map((p) => {
+                return {
+                  ...p,
+                  fLat: parseFloat(p.latitude),
+                  fLng: parseFloat(p.longitude),
+                  isRE100_Strict: p.isRE100 === true, // Server flag
+                  isPlantRE100: (() => {
+                    let year = 0;
+                    if (p.commYear) {
+                      const m = String(p.commYear).match(/\d{4}/);
+                      if (m) year = parseInt(m[0]);
+                    }
+                    if (year === 0 && p.commissioningDate) {
+                      const m = String(p.commissioningDate).match(/\d{4}/);
+                      if (m) year = parseInt(m[0]);
+                    }
+                    return year >= 2014;
+                  })(), // Commissioning Year threshold fallback
+                  totalVol: (p.issuances || []).reduce(
+                    (acc, curr) => acc + (Number(curr.issuanceVolume) || 0),
+                    0,
+                  ),
+                };
+              })
               .filter((p) => !isNaN(p.fLat) && !isNaN(p.fLng));
 
             // DHEERE DHEERE LOAD: State ko previous data mein append karte rahein
@@ -169,26 +183,10 @@ export default function UserMarketDashboard() {
   // Ye filters ko ignore karke hamesha pure data ke top 20 dikhayega
   const filteredData = useMemo(() => {
     return allData
-      .map((p) => {
-        // Commissioning Year threshold logic (>= 2014 is RE100)
-        // Null or missing commYear is treated as Non-RE100
-        const cYear = parseInt(p.commYear || 0);
-        const isPlantRE100 = cYear >= 2014;
-
-        // Total volume is the sum of all issuances for the plant
-        const dynamicVol = (p.issuances || []).reduce(
-          (acc, curr) => acc + (Number(curr.issuanceVolume) || 0),
-          0,
-        );
-
-        return { ...p, dynamicVol, isPlantRE100 };
-      })
       .filter((p) => {
-        if (p.dynamicVol <= 0) return false;
-
         const matchC = countryFilter === 'All' || p.country === countryFilter;
 
-        // Match RE Status based on Commissioning Year
+        // Match RE Status based on common logic calculated during ingest
         const matchRE =
           reStatus === 'All'
             ? true
@@ -205,13 +203,15 @@ export default function UserMarketDashboard() {
 
         return matchC && matchRE && matchT;
       })
-      .sort((a, b) => b.dynamicVol - a.dynamicVol);
+      .sort((a, b) => b.totalVol - a.totalVol);
   }, [allData, reStatus, techFilter, countryFilter]);
 
-  // Update Global Leaderboard to honor filters
+  // Global Leaderboard - Always fixed to top 20 globally, ignores filters
   const globalTop20 = useMemo(() => {
-    return [...filteredData].slice(0, 20);
-  }, [filteredData]);
+    return [...allData]
+      .sort((a, b) => b.totalVol - a.totalVol)
+      .slice(0, 20);
+  }, [allData]);
 
   const handleCountryChange = async (e) => {
     const country = e.target.value;
@@ -472,7 +472,7 @@ export default function UserMarketDashboard() {
                                   fontWeight="900"
                                   color={BRAND_GREEN}
                                 >
-                                  {Math.round(p.dynamicVol).toLocaleString()}
+                                  {Math.round(p.totalVol).toLocaleString()}
                                 </Text>
                               </HStack>
 
@@ -538,7 +538,7 @@ export default function UserMarketDashboard() {
                 <HStack justify="space-between" mt={1}>
                   <Text fontSize="9px">{p.country}</Text>
                   <Text fontSize="10px" fontWeight="900">
-                    {Math.round(p.dynamicVol).toLocaleString()}
+                    {Math.round(p.totalVol).toLocaleString()}
                   </Text>
                 </HStack>
               </Box>
@@ -630,7 +630,7 @@ export default function UserMarketDashboard() {
                     fontSize="11px"
                     color={BRAND_GREEN}
                   >
-                    {Math.round(p.dynamicVol).toLocaleString()}
+                    {Math.round(p.totalVol).toLocaleString()}
                   </Td>
                 </Tr>
               ))}
