@@ -9,12 +9,6 @@ import {
   Select,
   HStack,
   VStack,
-  Table,
-  Thead,
-  Tbody,
-  Tr,
-  Th,
-  Td,
 } from '@chakra-ui/react';
 import Card from 'components/card/Card.js';
 import BarChart from 'components/charts/BarChart';
@@ -33,7 +27,6 @@ export default function TotalSpent(props) {
   const [selectedMonth, setSelectedMonth] = useState('');
 
   const textColor = useColorModeValue('secondaryGray.900', 'white');
-  const borderColor = useColorModeValue('gray.200', 'whiteAlpha.100');
 
   const monthOrder = useMemo(
     () => [
@@ -58,19 +51,16 @@ export default function TotalSpent(props) {
       try {
         const res = await api.get('/pricing/country-avg');
         const data = res.data?.data || [];
-
-        // Console check for Debugging (Check Taiwan price here)
-        console.log('Raw API Data:', data);
-
         setRawData(data);
 
-        // Logic: Latest aur Previous month set karna
+        // Saare months ko sort karo base on calendar order
         const availableMonths = [...new Set(data.map((d) => d.month))].sort(
           (a, b) => monthOrder.indexOf(a) - monthOrder.indexOf(b),
         );
 
         if (availableMonths.length >= 2) {
-          // Default selection: Last month se pehla wala (e.g. Feb if March is latest)
+          // DEFAULT LOGIC: Latest month (last index) ke pichle wala month (last - 1)
+          // Agar April latest hai, toh March select hoga.
           setSelectedMonth(availableMonths[availableMonths.length - 2]);
         } else if (availableMonths.length === 1) {
           setSelectedMonth(availableMonths[0]);
@@ -84,6 +74,7 @@ export default function TotalSpent(props) {
     fetchData();
   }, [monthOrder]);
 
+  // Hamesha DB ka sabse naya month (e.g., April)
   const currentMonthName = useMemo(() => {
     if (rawData.length === 0) return '';
     const available = [...new Set(rawData.map((d) => d.month))];
@@ -92,6 +83,7 @@ export default function TotalSpent(props) {
       .pop();
   }, [rawData, monthOrder]);
 
+  // Dropdown ke liye months (Latest wale ko chhod kar baaki sab)
   const comparisonOptions = useMemo(
     () =>
       [...new Set(rawData.map((d) => d.month))]
@@ -103,7 +95,7 @@ export default function TotalSpent(props) {
   const { chartData, chartOptions, countriesCount } = useMemo(() => {
     const countries = [...new Set(rawData.map((item) => item.country))].sort();
 
-    // Taiwan Fix: Map exact numeric values
+    // Bar 1: Selected Month (User ki choice ya Previous month)
     const dataSelected = countries.map((c) => {
       const found = rawData.find(
         (d) => d.country === c && d.month === selectedMonth,
@@ -111,6 +103,7 @@ export default function TotalSpent(props) {
       return found ? parseFloat(found.avgPrice) : 0;
     });
 
+    // Bar 2: Hamesha Current/Latest Month
     const dataCurrent = countries.map((c) => {
       const found = rawData.find(
         (d) => d.country === c && d.month === currentMonthName,
@@ -119,11 +112,7 @@ export default function TotalSpent(props) {
     });
 
     const options = {
-      chart: {
-        type: 'bar',
-        toolbar: { show: false },
-        animations: { enabled: true, speed: 600 },
-      },
+      chart: { type: 'bar', toolbar: { show: false } },
       plotOptions: {
         bar: {
           borderRadius: 4,
@@ -143,7 +132,6 @@ export default function TotalSpent(props) {
         labels: {
           style: { colors: '#A3AED0', fontSize: '11px', fontWeight: '600' },
           rotate: -45,
-          trim: true,
         },
       },
       yaxis: {
@@ -154,16 +142,13 @@ export default function TotalSpent(props) {
         forceNiceScale: true,
       },
       legend: { show: true, position: 'top', horizontalAlign: 'right' },
-      tooltip: {
-        theme: 'dark',
-        y: { formatter: (val) => `$${val.toFixed(2)}` },
-      },
+      tooltip: { shared: true, intersect: false, theme: 'dark' },
     };
 
     return {
       chartData: [
         { name: `${selectedMonth}`, data: dataSelected },
-        { name: `${currentMonthName} (Latest)`, data: dataCurrent },
+        { name: `${currentMonthName} (Current)`, data: dataCurrent },
       ],
       chartOptions: options,
       countriesCount: countries.length,
@@ -193,14 +178,14 @@ export default function TotalSpent(props) {
           <HStack spacing="5px">
             <Icon as={MdOutlineCalendarToday} color={SOFT_GREEN} />
             <Text color="secondaryGray.600" fontSize="sm" fontWeight="500">
-              Live DB Data: {currentMonthName}
+              Comparing {selectedMonth} vs {currentMonthName}
             </Text>
           </HStack>
         </VStack>
 
         <HStack>
           <Text fontSize="sm" fontWeight="bold" color="gray.500">
-            Compare with:
+            Change Baseline:
           </Text>
           <Select
             size="sm"
@@ -208,7 +193,6 @@ export default function TotalSpent(props) {
             value={selectedMonth}
             onChange={(e) => setSelectedMonth(e.target.value)}
             borderColor={SOFT_GREEN}
-            focusBorderColor={SOFT_GREEN}
             borderRadius="8px"
             maxW="140px"
           >
@@ -221,7 +205,6 @@ export default function TotalSpent(props) {
         </HStack>
       </Flex>
 
-      {/* Chart Section */}
       <Box w="100%" overflowX="auto" pb="20px">
         <Box
           minW={countriesCount > 4 ? `${countriesCount * 160}px` : '100%'}
@@ -235,7 +218,6 @@ export default function TotalSpent(props) {
         </Box>
       </Box>
 
-      {/* Accuracy Helper: Text Info */}
       <Flex
         w="100%"
         direction="column"
@@ -247,13 +229,14 @@ export default function TotalSpent(props) {
         <HStack mb="10px">
           <Icon as={IoCheckmarkCircle} color={SOFT_GREEN} />
           <Text color={textColor} fontSize="sm" fontWeight="700">
-            Data Verification
+            Dynamic Comparison Active
           </Text>
         </HStack>
         <Text fontSize="xs" color="secondaryGray.600">
-          Showing exact pricing from database for <b>{selectedMonth}</b> and{' '}
-          <b>{currentMonthName}</b>. Taiwan bars are scaled to show actual price
-          ($100+), while others ($2-$5) are visible via data labels.
+          The chart automatically compares the{' '}
+          <b>Latest Database Entry ({currentMonthName})</b>
+          against your selection. By default, it shows the immediate previous
+          month.
         </Text>
       </Flex>
     </Card>
