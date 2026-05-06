@@ -61,6 +61,11 @@ const userSchema = new mongoose.Schema(
     },
     countryOfIncorporation: { type: String, trim: true, default: "" },
     reason: { type: String, trim: true, default: "" },
+    approvalStatus: {
+      type: String,
+      enum: ["pending", "approved", "rejected"],
+      default: "pending",
+    },
   },
   {
     timestamps: true,

@@ -24,6 +24,7 @@ import api from '../../../utils/axiosConfig';
 import { useNavigate } from 'react-router-dom';
 import { industries, companySizes, genders, countries } from './constant';
 import logo from 'assets/img/final-logo.webp';
+import carbonBG from 'assets/img/carbon_market_bg.png';
 
 const AuthForm = () => {
   const [step, setStep] = useState(1);
@@ -138,22 +139,49 @@ const AuthForm = () => {
   };
 
   return (
-    <Container maxW="container.sm" py={10}>
-      <VStack spacing={4} mb={6}>
-        <Image src={logo} alt="Hestiya Logo" maxW="140px" />
-        <Heading size="lg" color={useColorModeValue(brandGreen, 'white')}>
+    <Box
+      h="100vh"
+      w="full"
+      backgroundImage={`url(${carbonBG})`}
+      backgroundSize="cover"
+      backgroundPosition="center"
+      backgroundRepeat="no-repeat"
+      position="relative"
+      display="flex"
+      alignItems="center"
+      justifyContent="center"
+      overflow="hidden"
+    >
+      {/* Dark overlay */}
+      <Box
+        position="absolute"
+        inset={0}
+        bg="rgba(0, 0, 0, 0.55)"
+        backdropFilter="blur(1px)"
+      />
+      <Container maxW="container.sm" py={4} position="relative" zIndex={1}>
+      <VStack spacing={2} mb={3}>
+        <Image src={logo} alt="Hestiya Logo" maxW="70px" />
+        <Heading size="md" color={useColorModeValue('white', 'white')}>
           Create Your Account
         </Heading>
       </VStack>
 
       <Box
-        p={8}
+        p={5}
         borderWidth={1}
         borderRadius="20px"
         boxShadow="2xl"
         bg={cardBg}
+        maxH="75vh"
+        overflowY="auto"
+        css={{
+          '&::-webkit-scrollbar': { width: '4px' },
+          '&::-webkit-scrollbar-thumb': { background: '#028B3E', borderRadius: '4px' },
+          '&::-webkit-scrollbar-track': { background: 'transparent' },
+        }}
       >
-        <VStack spacing={6} align="stretch">
+        <VStack spacing={3} align="stretch">
           <Box>
             <HStack justifyContent="space-between" mb={2}>
               <Text fontSize="xs" fontWeight="bold" color={brandGreen}>
@@ -233,7 +261,7 @@ const AuthForm = () => {
           )}
 
           {step === 3 && (
-            <VStack spacing={4}>
+            <VStack spacing={2}>
               {/* 1. Name Section */}
               <SimpleGrid columns={[1, 2]} spacing={4} w="full">
                 <Input
@@ -358,8 +386,8 @@ const AuthForm = () => {
                 bg={brandGreen}
                 color="white"
                 w="full"
-                h="50px"
-                mt={4}
+                h="40px"
+                mt={2}
                 borderRadius="16px"
                 onClick={handleFinalSubmit}
                 isLoading={loading}
@@ -385,6 +413,7 @@ const AuthForm = () => {
         </VStack>
       </Box>
     </Container>
+    </Box>
   );
 };
 

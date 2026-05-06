@@ -21,12 +21,21 @@ import {
   HStack,
   VStack,
   IconButton,
+  Button,
+  useToast,
+  Menu,
+  MenuButton,
+  MenuList,
+  MenuItem,
 } from '@chakra-ui/react';
 import {
   MdSearch,
   MdChevronLeft,
   MdChevronRight,
   MdPhone,
+  MdMoreVert,
+  MdCheckCircle,
+  MdCancel,
 } from 'react-icons/md';
 import api from '../../../utils/axiosConfig';
 
@@ -42,22 +51,71 @@ export default function AdminUserList() {
   const hoverBg = useColorModeValue('gray.50', 'whiteAlpha.50');
   const brandGreen = '#239758';
 
-  useEffect(() => {
-    const fetchUsers = async () => {
-      try {
-        setLoading(true);
-        const res = await api.get('/user/all');
-        if (res.data.success) {
-          setUsers(res.data.users);
-        }
-      } catch (err) {
-        console.error('Fetch Error:', err);
-      } finally {
-        setLoading(false);
+  const toast = useToast();
+
+  const fetchUsers = async () => {
+    try {
+      setLoading(true);
+      const res = await api.get('/user/all');
+      if (res.data.success) {
+        setUsers(res.data.users);
       }
-    };
+    } catch (err) {
+      console.error('Fetch Error:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     fetchUsers();
   }, []);
+
+  const handleApprove = async (userId) => {
+    try {
+      const res = await api.patch(`/user/approve/${userId}`);
+      if (res.data.success) {
+        toast({
+          title: 'User Approved',
+          status: 'success',
+          duration: 3000,
+          isClosable: true,
+        });
+        fetchUsers();
+      }
+    } catch (err) {
+      toast({
+        title: 'Error',
+        description: err.response?.data?.message || 'Failed to approve user',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      });
+    }
+  };
+
+  const handleReject = async (userId) => {
+    try {
+      const res = await api.patch(`/user/reject/${userId}`);
+      if (res.data.success) {
+        toast({
+          title: 'User Rejected',
+          status: 'info',
+          duration: 3000,
+          isClosable: true,
+        });
+        fetchUsers();
+      }
+    } catch (err) {
+      toast({
+        title: 'Error',
+        description: err.response?.data?.message || 'Failed to reject user',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      });
+    }
+  };
 
   // Filter Logic (Search by Name, Email, or Phone)
   const filteredUsers = users.filter(
@@ -120,7 +178,9 @@ export default function AdminUserList() {
               <Th color="gray.400">CONTACT</Th>
               <Th color="gray.400">COMPANY / INDUSTRY</Th>
               <Th color="gray.400">KYC STATUS</Th>
+              <Th color="gray.400">APPROVAL STATUS</Th>
               <Th color="gray.400">JOINED DATE</Th>
+              <Th color="gray.400">ACTIONS</Th>
             </Tr>
           </Thead>
           <Tbody>
@@ -177,8 +237,49 @@ export default function AdminUserList() {
                     {user.isKycCompleted ? 'Verified' : 'Pending'}
                   </Badge>
                 </Td>
+                <Td>
+                  <Badge
+                    colorScheme={
+                      user.approvalStatus === 'approved'
+                        ? 'green'
+                        : user.approvalStatus === 'rejected'
+                        ? 'red'
+                        : 'gray'
+                    }
+                    variant="subtle"
+                    borderRadius="6px"
+                    px={2}
+                    fontSize="10px"
+                    textTransform="capitalize"
+                  >
+                    {user.approvalStatus || 'Pending'}
+                  </Badge>
+                </Td>
                 <Td fontSize="xs" color="gray.500">
                   {new Date(user.createdAt).toLocaleDateString('en-GB')}
+                </Td>
+                <Td>
+                  <HStack spacing={2}>
+                    <Button
+                      size="xs"
+                      colorScheme="green"
+                      leftIcon={<MdCheckCircle />}
+                      onClick={() => handleApprove(user._id)}
+                      isDisabled={user.approvalStatus === 'approved'}
+                    >
+                      Approve
+                    </Button>
+                    <Button
+                      size="xs"
+                      colorScheme="red"
+                      variant="outline"
+                      leftIcon={<MdCancel />}
+                      onClick={() => handleReject(user._id)}
+                      isDisabled={user.approvalStatus === 'rejected'}
+                    >
+                      Reject
+                    </Button>
+                  </HStack>
                 </Td>
               </Tr>
             ))}

@@ -19,6 +19,7 @@ import MarketPricingUpload from 'views/admin/pricing';
 import MarketMap from 'views/user/price-view';
 import UserProfile from 'views/user/profile';
 import AdminUserList from 'views/admin/user/index';
+import ForgotPassword from 'views/auth/forgotPassword';
 
 const brandGreen = '#19944D';
 
@@ -139,6 +140,13 @@ const routes = [
     layout: '/auth',
     path: '/sign-up',
     component: <AuthForm />,
+    secondary: true,
+  },
+  {
+    name: 'Forgot Password',
+    layout: '/auth',
+    path: '/forgot-password',
+    component: <ForgotPassword />,
     secondary: true,
   },
 ];

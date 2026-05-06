@@ -1,7 +1,9 @@
 import axios from 'axios';
 
 // 1. Base URL setup
-const BASE_URL = 'https://intelligence.hestiya.com/api';
+const BASE_URL = window.location.hostname === 'localhost'
+  ? 'http://localhost:5000/api'
+  : 'https://intelligence.hestiya.com/api';
 
 const axiosInstance = axios.create({
   baseURL: BASE_URL,

@@ -174,22 +174,22 @@ exports.completeKycAndSignup = async (req, res) => {
       await transporter.sendMail({
         from: '"Hestiya Intelligence" <connect@hestiya.com>',
         to: normalizedEmail,
-        subject: "Welcome to Hestiya Intelligence - Account Activated",
+        subject: "Application Received - Hestiya Intelligence",
         html: `
           <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: auto; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden;">
-            <div style="background-color: #48BB78; padding: 30px; text-align: center;">
-              <h1 style="color: white; margin: 0; font-size: 24px;">Welcome to Hestiya Intelligence</h1>
+            <div style="background-color: #4A5568; padding: 30px; text-align: center;">
+              <h1 style="color: white; margin: 0; font-size: 24px;">Application Received</h1>
             </div>
             <div style="padding: 30px; color: #2d3748; line-height: 1.6;">
               <p style="font-size: 18px;">Hello <b>${updatedUser.firstName || "Partner"}</b>,</p>
-              <p>Congratulations! Your corporate account has been successfully verified and activated.</p>
-              <p>You now have full access to <b>Hestiya Market Intelligence</b>, where you can track I-REC pricing, analyze global market trends, and manage your sustainability certificates seamlessly.</p>
+              <p>Thank you for registering with <b>Hestiya Intelligence</b>. Your application has been successfully received and is currently under review by our team.</p>
+              <p>Once your account is approved, you will receive a confirmation email and will be able to access the Hestiya Market Intelligence dashboard.</p>
               
-              <div style="text-align: center; margin: 30px 0;">
-                <a href="https://hestiya.com/auth/sign-in" style="background-color: #48BB78; color: white; padding: 12px 25px; text-decoration: none; borderRadius: 8px; font-weight: bold; display: inline-block;">Explore Dashboard</a>
+              <div style="background-color: #f7fafc; padding: 20px; border-radius: 8px; margin: 20px 0; border: 1px solid #edf2f7;">
+                <p style="margin: 0; color: #4a5568;"><b>Status:</b> Pending Review</p>
               </div>
 
-              <p style="font-size: 14px; color: #718096; margin-top: 40px; border-top: 1px solid #edf2f7; pt: 20px;">
+              <p style="font-size: 14px; color: #718096; margin-top: 40px; border-top: 1px solid #edf2f7; padding-top: 20px;">
                 If you have any questions, feel free to reply to this email or contact our support team at connect@hestiya.com.
               </p>
               <p style="font-size: 14px; color: #718096;">Best Regards,<br><b>The Hestiya Team</b></p>
@@ -197,20 +197,20 @@ exports.completeKycAndSignup = async (req, res) => {
           </div>
         `,
       });
-      console.log(`Welcome email sent to: ${normalizedEmail}`);
+      console.log(`Application received email sent to: ${normalizedEmail}`);
     } catch (mailErr) {
-      // Email fail hone par response mat rokiye, sirf log karein
-      console.error("Welcome Email Sending Failed:", mailErr);
+      console.error("Application Email Sending Failed:", mailErr);
     }
     // --- WELCOME EMAIL LOGIC END ---
 
     res.json({
       success: true,
-      message: "KYC completed and password set successfully!",
+      message: "Registration successful! Your account is pending admin approval.",
       user: {
         email: updatedUser.email,
         firstName: updatedUser.firstName,
         isKycCompleted: updatedUser.isKycCompleted,
+        approvalStatus: updatedUser.approvalStatus,
       },
     });
   } catch (err) {
@@ -233,13 +233,28 @@ exports.login = async (req, res) => {
       return res.status(401).json({ message: "Invalid email or password" });
     }
 
-    // 2. KYC Check (Pehle ki tarah sahi hai)
+    // 2. KYC Check
     if (user.role !== "admin" && !user.isKycCompleted) {
       return res.status(403).json({
-        // 403 Forbidden is better here
         message: "Please complete your KYC first.",
         isKycPending: true,
       });
+    }
+
+    // 3. Approval Check
+    if (user.role !== "admin") {
+      if (user.approvalStatus === "pending") {
+        return res.status(403).json({
+          message: "Your account is pending admin approval.",
+          isPendingApproval: true,
+        });
+      }
+      if (user.approvalStatus === "rejected") {
+        return res.status(403).json({
+          message: "Your account application has been rejected.",
+          isRejected: true,
+        });
+      }
     }
 
     // 3. Password Match
@@ -316,5 +331,216 @@ exports.getAllUsers = async (req, res) => {
       success: false,
       message: "Internal Server Error",
     });
+  }
+};
+
+// --- 7. FORGOT PASSWORD SEND OTP ---
+exports.forgotPasswordSendOtp = async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ message: "Email is required" });
+
+    const normalizedEmail = email.trim().toLowerCase();
+    const user = await User.findOne({ email: normalizedEmail });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User with this email does not exist.",
+      });
+    }
+
+    // OTP Generation
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiry = new Date(Date.now() + 10 * 60 * 1000);
+
+    user.otp = otp;
+    user.otpExpires = expiry;
+    await user.save({ validateBeforeSave: false });
+
+    console.log(`Reset OTP for ${normalizedEmail}: ${otp}`);
+
+    // Email Sending
+    await transporter.sendMail({
+      from: '"Hestiya Intelligence" <connect@hestiya.com>',
+      to: normalizedEmail,
+      subject: "Password Reset Code - Hestiya Intelligence",
+      html: `
+        <div style="font-family: Arial, sans-serif; padding: 20px; border: 1px solid #eee;">
+          <h2 style="color: #48BB78;">Hestiya Intelligence</h2>
+          <p>Hello,</p>
+          <p>You requested a password reset. Your reset code is: <b style="font-size: 24px; color: #333;">${otp}</b></p>
+          <p>This code is valid for <b>10 minutes</b>. If you didn't request this, please ignore this email.</p>
+        </div>
+      `,
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Reset OTP sent successfully. Please check your email.",
+    });
+  } catch (err) {
+    console.error("ERROR in forgotPasswordSendOtp:", err);
+    return res.status(500).json({ success: false, message: "Internal Server Error." });
+  }
+};
+
+// --- 8. RESET PASSWORD ---
+exports.resetPassword = async (req, res) => {
+  try {
+    const { email, otp, newPassword } = req.body;
+    if (!email || !otp || !newPassword) {
+      return res.status(400).json({ message: "All fields are required" });
+    }
+
+    const normalizedEmail = email.trim().toLowerCase();
+    const user = await User.findOne({ email: normalizedEmail });
+
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    // OTP Match logic
+    if (user.otp !== otp.toString().trim()) {
+      return res.status(400).json({ message: "Invalid OTP" });
+    }
+
+    // Check expiry
+    if (user.otpExpires < Date.now()) {
+      return res.status(400).json({ message: "OTP expired" });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({ message: "Password must be at least 6 characters long." });
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    user.password = await bcrypt.hash(newPassword, salt);
+    user.otp = null;
+    user.otpExpires = null;
+
+    await user.save({ validateBeforeSave: false });
+
+    return res.status(200).json({
+      success: true,
+      message: "Password reset successfully. You can now login with your new password.",
+    });
+  } catch (err) {
+    console.error("RESET-PASSWORD ERROR:", err.message);
+    return res.status(500).json({ success: false, message: "Internal Server Error" });
+  }
+};
+
+// --- 9. APPROVE USER (Admin Only) ---
+exports.approveUser = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const user = await User.findByIdAndUpdate(
+      userId,
+      { approvalStatus: "approved" },
+      { new: true },
+    );
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    // Send Approval Email
+    try {
+      await transporter.sendMail({
+        from: '"Hestiya Intelligence" <connect@hestiya.com>',
+        to: user.email,
+        subject: "Account Approved - Hestiya Intelligence",
+        html: `
+          <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: auto; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden;">
+            <div style="background-color: #48BB78; padding: 30px; text-align: center;">
+              <h1 style="color: white; margin: 0; font-size: 24px;">Welcome to Hestiya Intelligence</h1>
+            </div>
+            <div style="padding: 30px; color: #2d3748; line-height: 1.6;">
+              <p style="font-size: 18px;">Hello <b>${user.firstName || "Partner"}</b>,</p>
+              <p>Great news! Your account application has been <b>approved</b>.</p>
+              <p>You now have full access to <b>Hestiya Market Intelligence</b>, where you can track I-REC pricing, analyze global market trends, and manage your sustainability certificates seamlessly.</p>
+              
+              <div style="text-align: center; margin: 30px 0;">
+                <a href="https://hestiya.com/auth/sign-in" style="background-color: #48BB78; color: white; padding: 12px 25px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">Explore Dashboard</a>
+              </div>
+
+              <p style="font-size: 14px; color: #718096; margin-top: 40px; border-top: 1px solid #edf2f7; padding-top: 20px;">
+                If you have any questions, feel free to reply to this email or contact our support team at connect@hestiya.com.
+              </p>
+              <p style="font-size: 14px; color: #718096;">Best Regards,<br><b>The Hestiya Team</b></p>
+            </div>
+          </div>
+        `,
+      });
+    } catch (mailErr) {
+      console.error("Approval Email Failed:", mailErr);
+    }
+
+    res.json({
+      success: true,
+      message: "User approved successfully",
+      user,
+    });
+  } catch (err) {
+    console.error("Error approving user:", err.message);
+    res.status(500).json({ success: false, message: "Internal Server Error" });
+  }
+};
+
+// --- 10. REJECT USER (Admin Only) ---
+exports.rejectUser = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const user = await User.findByIdAndUpdate(
+      userId,
+      { approvalStatus: "rejected" },
+      { new: true },
+    );
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    // Send Rejection Email
+    try {
+      await transporter.sendMail({
+        from: '"Hestiya Intelligence" <connect@hestiya.com>',
+        to: user.email,
+        subject: "Update on your Hestiya Account Application",
+        html: `
+          <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: auto; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden;">
+            <div style="background-color: #E53E3E; padding: 30px; text-align: center;">
+              <h1 style="color: white; margin: 0; font-size: 24px;">Application Update</h1>
+            </div>
+            <div style="padding: 30px; color: #2d3748; line-height: 1.6;">
+              <p style="font-size: 18px;">Hello <b>${user.firstName || "Partner"}</b>,</p>
+              <p>Thank you for your interest in <b>Hestiya Intelligence</b>.</p>
+              <p>After reviewing your application, we regret to inform you that we cannot approve your account at this time.</p>
+              
+              <div style="background-color: #fff5f5; padding: 20px; border-radius: 8px; margin: 20px 0; border: 1px solid #fed7d7;">
+                <p style="margin: 0; color: #c53030;"><b>Decision:</b> Application Rejected</p>
+              </div>
+
+              <p>If you believe this was a mistake or would like to provide more information, please contact our support team.</p>
+
+              <p style="font-size: 14px; color: #718096; margin-top: 40px; border-top: 1px solid #edf2f7; padding-top: 20px;">
+                Contact us at connect@hestiya.com.
+              </p>
+              <p style="font-size: 14px; color: #718096;">Best Regards,<br><b>The Hestiya Team</b></p>
+            </div>
+          </div>
+        `,
+      });
+    } catch (mailErr) {
+      console.error("Rejection Email Failed:", mailErr);
+    }
+
+    res.json({
+      success: true,
+      message: "User rejected successfully",
+      user,
+    });
+  } catch (err) {
+    console.error("Error rejecting user:", err.message);
+    res.status(500).json({ success: false, message: "Internal Server Error" });
   }
 };
