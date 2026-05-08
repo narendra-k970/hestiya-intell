@@ -78,7 +78,7 @@ exports.sendOtp = async (req, res) => {
 
     // 5. Email Sending
     await transporter.sendMail({
-      from: '"Hestiya Intelligence" <connect@hestiya.com>',
+      from: '"Hestiya Intelligence" <support@hestiya.com>',
       to: normalizedEmail,
       subject: "Verification Code - Hestiya Intelligence",
       html: `
@@ -172,7 +172,7 @@ exports.completeKycAndSignup = async (req, res) => {
     // --- WELCOME EMAIL LOGIC START ---
     try {
       await transporter.sendMail({
-        from: '"Hestiya Intelligence" <connect@hestiya.com>',
+        from: '"Hestiya Intelligence" <support@hestiya.com>',
         to: normalizedEmail,
         subject: "Application Received - Hestiya Intelligence",
         html: `
@@ -190,7 +190,7 @@ exports.completeKycAndSignup = async (req, res) => {
               </div>
 
               <p style="font-size: 14px; color: #718096; margin-top: 40px; border-top: 1px solid #edf2f7; padding-top: 20px;">
-                If you have any questions, feel free to reply to this email or contact our support team at connect@hestiya.com.
+                If you have any questions, feel free to reply to this email or contact our support team at support@hestiya.com.
               </p>
               <p style="font-size: 14px; color: #718096;">Best Regards,<br><b>The Hestiya Team</b></p>
             </div>
@@ -362,7 +362,7 @@ exports.forgotPasswordSendOtp = async (req, res) => {
 
     // Email Sending
     await transporter.sendMail({
-      from: '"Hestiya Intelligence" <connect@hestiya.com>',
+      from: '"Hestiya Intelligence" <support@hestiya.com>',
       to: normalizedEmail,
       subject: "Password Reset Code - Hestiya Intelligence",
       html: `
@@ -446,7 +446,7 @@ exports.approveUser = async (req, res) => {
     // Send Approval Email
     try {
       await transporter.sendMail({
-        from: '"Hestiya Intelligence" <connect@hestiya.com>',
+        from: '"Hestiya Intelligence" <support@hestiya.com>',
         to: user.email,
         subject: "Account Approved - Hestiya Intelligence",
         html: `
@@ -464,7 +464,7 @@ exports.approveUser = async (req, res) => {
               </div>
 
               <p style="font-size: 14px; color: #718096; margin-top: 40px; border-top: 1px solid #edf2f7; padding-top: 20px;">
-                If you have any questions, feel free to reply to this email or contact our support team at connect@hestiya.com.
+                If you have any questions, feel free to reply to this email or contact our support team at support@hestiya.com.
               </p>
               <p style="font-size: 14px; color: #718096;">Best Regards,<br><b>The Hestiya Team</b></p>
             </div>
@@ -503,7 +503,7 @@ exports.rejectUser = async (req, res) => {
     // Send Rejection Email
     try {
       await transporter.sendMail({
-        from: '"Hestiya Intelligence" <connect@hestiya.com>',
+        from: '"Hestiya Intelligence" <support@hestiya.com>',
         to: user.email,
         subject: "Update on your Hestiya Account Application",
         html: `
@@ -523,7 +523,7 @@ exports.rejectUser = async (req, res) => {
               <p>If you believe this was a mistake or would like to provide more information, please contact our support team.</p>
 
               <p style="font-size: 14px; color: #718096; margin-top: 40px; border-top: 1px solid #edf2f7; padding-top: 20px;">
-                Contact us at connect@hestiya.com.
+                Contact us at support@hestiya.com.
               </p>
               <p style="font-size: 14px; color: #718096;">Best Regards,<br><b>The Hestiya Team</b></p>
             </div>

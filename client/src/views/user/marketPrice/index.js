@@ -105,7 +105,7 @@ export default function UserMarketDashboard() {
   const [geoData, setGeoData] = useState(null);
 
   const [reStatus, setReStatus] = useState('All');
-  const [techFilter, setTechFilter] = useState('All');
+  const [techFilter, setTechFilter] = useState([]);
   const [countryFilter, setCountryFilter] = useState('All');
 
   const mapRef = useRef(null);
@@ -195,11 +195,13 @@ export default function UserMarketDashboard() {
               : !p.isPlantRE100;
 
         const matchT =
-          techFilter === 'All'
+          techFilter.length === 0
             ? true
-            : (p.technology || '')
-                .toLowerCase()
-                .includes(techFilter.toLowerCase());
+            : techFilter.some((tf) =>
+                (p.technology || '')
+                  .toLowerCase()
+                  .includes(tf.toLowerCase()),
+              );
 
         return matchC && matchRE && matchT;
       })
@@ -244,7 +246,7 @@ export default function UserMarketDashboard() {
 
   const clearFilters = () => {
     setReStatus('All');
-    setTechFilter('All');
+    setTechFilter([]);
     setCountryFilter('All');
     setGeoData(null);
     if (mapRef.current) mapRef.current.flyTo([20, 20], 3);
@@ -296,8 +298,14 @@ export default function UserMarketDashboard() {
                 key={f}
                 size="xs"
                 colorScheme="green"
-                variant={techFilter === f ? 'solid' : 'ghost'}
-                onClick={() => setTechFilter(f === techFilter ? 'All' : f)}
+                variant={techFilter.includes(f) ? 'solid' : 'ghost'}
+                onClick={() =>
+                  setTechFilter((prev) =>
+                    prev.includes(f)
+                      ? prev.filter((t) => t !== f)
+                      : [...prev, f],
+                  )
+                }
                 borderRadius="8px"
               >
                 {f}
@@ -306,7 +314,7 @@ export default function UserMarketDashboard() {
 
             {/* CLEAR FILTER BUTTON */}
             {(reStatus !== 'All' ||
-              techFilter !== 'All' ||
+              techFilter.length > 0 ||
               countryFilter !== 'All') && (
               <Tooltip label="Clear All Filters">
                 <IconButton
