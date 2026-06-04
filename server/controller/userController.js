@@ -1,4 +1,5 @@
 const User = require("../models/userModel");
+const Otp = require("../models/otpModel");
 const nodemailer = require("nodemailer");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
@@ -30,6 +31,14 @@ exports.sendOtp = async (req, res) => {
       "aol.com",
       "zoho.com",
       "ymail.com",
+      "protonmail.com",
+      "163.com",
+      "126.com",
+      "qq.com",
+      "foxmail.com",
+      "sina.com",
+      "sohu.com",
+      "tom.com"
     ];
     if (blockedDomains.includes(domain)) {
       return res.status(400).json({
@@ -38,8 +47,26 @@ exports.sendOtp = async (req, res) => {
       });
     }
 
+    // 1.5. Purely Numeric Prefix Check (Block spam like 15357092906@...)
+    const emailPrefix = normalizedEmail.split("@")[0];
+    const isPurelyNumeric = /^\d+$/.test(emailPrefix);
+    if (isPurelyNumeric) {
+      return res.status(400).json({
+        success: false,
+        message: "Registration failed: Emails with purely numeric usernames are not allowed.",
+      });
+    }
+
     // 2. SMART CHECK: Pehle user dhoondo
     const user = await User.findOne({ email: normalizedEmail });
+
+    // --- RATE LIMITING CHECK ---
+    if (user && user.otpExpires && (user.otpExpires - Date.now() > 9 * 60 * 1000)) {
+      return res.status(429).json({
+        success: false,
+        message: "Too many requests. Please wait 1 minute before requesting another OTP.",
+      });
+    }
 
     // Agar user mil gaya AUR KYC bhi completed hai, sirf tabhi block karein
     if (user && user.isKycCompleted) {
@@ -53,24 +80,17 @@ exports.sendOtp = async (req, res) => {
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const expiry = new Date(Date.now() + 10 * 60 * 1000);
 
-    // 4. UPSERT/UPDATE LOGIC
-    // Agar user pehle se hai (par KYC pending hai), toh ye sirf OTP update karega
-    // Agar naya hai, toh upsert karega
-    await User.findOneAndUpdate(
+    // 4. UPSERT OTP (Temporary Collection)
+    // Ab hum User table mein data nahi bacha rahe, sirf Otp table mein save kar rahe hain
+    await Otp.findOneAndUpdate(
       { email: normalizedEmail },
       {
-        $set: {
-          otp: otp,
-          otpExpires: expiry,
-          isEmailVerified: false, // Re-verify ki condition reset karein
-        },
+        otp: otp,
+        createdAt: Date.now(), // Refresh TTL on resend
       },
       {
         upsert: true,
         new: true,
-        runValidators: true,
-        setDefaultsOnInsert: true,
-        context: "query",
       },
     );
 
@@ -107,21 +127,29 @@ exports.verifyOtp = async (req, res) => {
   try {
     const { email, otp } = req.body;
     const normalizedEmail = email.trim().toLowerCase();
-    const user = await User.findOne({ email: normalizedEmail });
-
-    if (!user) return res.status(404).json({ message: "User not found" });
-
-    // OTP Match logic
-    if (user.otp !== otp.toString().trim()) {
-      return res.status(400).json({ message: "Invalid OTP" });
+    // 1. Check if OTP exists in Temporary Collection
+    const otpRecord = await Otp.findOne({ 
+      email: normalizedEmail, 
+      otp: otp.toString().trim() 
+    });
+ 
+    if (!otpRecord) {
+      return res.status(400).json({ message: "Invalid or expired OTP" });
     }
 
-    user.isEmailVerified = true;
-    user.otp = null;
-    user.otpExpires = null;
+    // 2. OTP is correct! Now create/update User in main collection
+    const user = await User.findOneAndUpdate(
+      { email: normalizedEmail },
+      { isEmailVerified: true },
+      { 
+        upsert: true, 
+        new: true,
+        setDefaultsOnInsert: true 
+      }
+    );
 
-    // SAVE CALL
-    await user.save({ validateBeforeSave: false });
+    // 3. Delete OTP record as it's no longer needed
+    await Otp.deleteOne({ _id: otpRecord._id });
 
     return res.status(200).json({
       success: true,
@@ -154,6 +182,23 @@ exports.completeKycAndSignup = async (req, res) => {
       return res
         .status(400)
         .json({ message: "Password must be at least 6 characters long." });
+    }
+
+    // --- KYC MANDATORY FIELD VALIDATION (Excluding displayPicture) ---
+    const requiredFields = [
+      "firstName",
+      "lastName",
+      "companyName",
+      "industry",
+      "countryOfIncorporation",
+      "phoneNumber",
+    ];
+    for (const field of requiredFields) {
+      if (!kycData[field] || kycData[field].toString().trim() === "") {
+        return res.status(400).json({
+          message: `${field.charAt(0).toUpperCase() + field.slice(1).replace(/([A-Z])/g, ' $1')} is required.`,
+        });
+      }
     }
 
     const salt = await bcrypt.genSalt(10);
@@ -316,7 +361,8 @@ exports.getUserProfile = async (req, res) => {
 // --- 6. GET ALL USERS (Admin Only) ---
 exports.getAllUsers = async (req, res) => {
   try {
-    const users = await User.find()
+    // Sirf wahi users dikhayein jinhone KYC complete kar liya hai
+    const users = await User.find({ isKycCompleted: true })
       .select("-password -otp -otpExpires")
       .sort({ createdAt: -1 });
 

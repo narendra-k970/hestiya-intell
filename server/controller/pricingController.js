@@ -27,6 +27,7 @@ exports.uploadMarketPricing = async (req, res) => {
       Technology: item.Technology || item["Type "] || item.Type || "N/A",
       Rate: Number(item.Rate || 0),
       isRE100: item.isRE100 || "No",
+      Certification: item.Certification || item.Certificate || "I-REC",
       addedBy: req.user ? req.user._id : null,
     }));
 
@@ -53,6 +54,7 @@ exports.getCountrywiseAverage = async (req, res) => {
             isRE100: "$isRE100",
             technology: "$Technology",
             vintage: "$Vintage", // RE vs Non-RE grouping
+            certification: "$Certification",
           },
           avgPrice: { $avg: "$Rate" },
           count: { $sum: 1 },
@@ -65,14 +67,38 @@ exports.getCountrywiseAverage = async (req, res) => {
           month: "$_id.month",
           vintage: "$_id.vintage",
           technology: "$_id.technology",
-          isRE100: "$_id.isRE100", // Fix: Yahan pehle '_id' miss ho raha tha
+          isRE100: "$_id.isRE100",
+          certification: "$_id.certification",
           avgPrice: { $round: ["$avgPrice", 2] },
           count: 1,
         },
       },
       {
+        $addFields: {
+          monthNumber: {
+            $switch: {
+              branches: [
+                { case: { $eq: [{ $toLower: "$month" }, "january"] }, then: 1 },
+                { case: { $eq: [{ $toLower: "$month" }, "february"] }, then: 2 },
+                { case: { $eq: [{ $toLower: "$month" }, "march"] }, then: 3 },
+                { case: { $eq: [{ $toLower: "$month" }, "april"] }, then: 4 },
+                { case: { $eq: [{ $toLower: "$month" }, "may"] }, then: 5 },
+                { case: { $eq: [{ $toLower: "$month" }, "june"] }, then: 6 },
+                { case: { $eq: [{ $toLower: "$month" }, "july"] }, then: 7 },
+                { case: { $eq: [{ $toLower: "$month" }, "august"] }, then: 8 },
+                { case: { $eq: [{ $toLower: "$month" }, "september"] }, then: 9 },
+                { case: { $eq: [{ $toLower: "$month" }, "october"] }, then: 10 },
+                { case: { $eq: [{ $toLower: "$month" }, "november"] }, then: 11 },
+                { case: { $eq: [{ $toLower: "$month" }, "december"] }, then: 12 }
+              ],
+              default: 0
+            }
+          }
+        }
+      },
+      {
         $sort: {
-          month: -1,
+          monthNumber: -1,
           country: 1,
           isRE100: 1,
         },
@@ -96,6 +122,7 @@ exports.getMarketPricing = async (req, res) => {
       technology,
       isRE100,
       month,
+      certification,
       page = 1,
       limit = 50,
     } = req.query;
@@ -106,12 +133,13 @@ exports.getMarketPricing = async (req, res) => {
     if (technology) filter.Technology = technology;
     if (isRE100) filter.isRE100 = isRE100 === "true"; // string to boolean
     if (month) filter.Month = month;
+    if (certification) filter.Certification = certification;
 
     // 2. Pagination lagayi hai taaki frontend freeze na ho
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
     const data = await Pricing.find(filter)
-      .select("Country Rate Month Technology isRE100") // Sirf kaam ki fields
+      .select("Country Rate Month Technology isRE100 Certification") // Sirf kaam ki fields
       .sort({ Month: -1 })
       .skip(skip)
       .limit(parseInt(limit))
@@ -132,7 +160,7 @@ exports.getMarketPricing = async (req, res) => {
 
 exports.getSingleCountryAvg = async (req, res) => {
   try {
-    const { country } = req.query;
+    const { country, certification } = req.query;
 
     if (!country) {
       return res
@@ -140,10 +168,13 @@ exports.getSingleCountryAvg = async (req, res) => {
         .json({ success: false, message: "Country is required" });
     }
 
+    let matchStage = { Country: country };
+    if (certification) matchStage.Certification = certification;
+
     const averages = await Pricing.aggregate([
       {
         // STEP 1: Pehle hi filter karlo taaki load kam ho
-        $match: { Country: country },
+        $match: matchStage,
       },
       {
         // STEP 2: Grouping by Month
@@ -151,6 +182,7 @@ exports.getSingleCountryAvg = async (req, res) => {
           _id: {
             month: "$Month",
             country: "$Country",
+            certification: "$Certification",
           },
           avgPrice: { $avg: "$Rate" },
         },
@@ -161,12 +193,36 @@ exports.getSingleCountryAvg = async (req, res) => {
           _id: 0,
           country: "$_id.country",
           month: "$_id.month",
+          certification: "$_id.certification",
           avgPrice: { $round: ["$avgPrice", 2] },
         },
       },
       {
+        $addFields: {
+          monthNumber: {
+            $switch: {
+              branches: [
+                { case: { $eq: [{ $toLower: "$month" }, "january"] }, then: 1 },
+                { case: { $eq: [{ $toLower: "$month" }, "february"] }, then: 2 },
+                { case: { $eq: [{ $toLower: "$month" }, "march"] }, then: 3 },
+                { case: { $eq: [{ $toLower: "$month" }, "april"] }, then: 4 },
+                { case: { $eq: [{ $toLower: "$month" }, "may"] }, then: 5 },
+                { case: { $eq: [{ $toLower: "$month" }, "june"] }, then: 6 },
+                { case: { $eq: [{ $toLower: "$month" }, "july"] }, then: 7 },
+                { case: { $eq: [{ $toLower: "$month" }, "august"] }, then: 8 },
+                { case: { $eq: [{ $toLower: "$month" }, "september"] }, then: 9 },
+                { case: { $eq: [{ $toLower: "$month" }, "october"] }, then: 10 },
+                { case: { $eq: [{ $toLower: "$month" }, "november"] }, then: 11 },
+                { case: { $eq: [{ $toLower: "$month" }, "december"] }, then: 12 }
+              ],
+              default: 0
+            }
+          }
+        }
+      },
+      {
         // STEP 4: Latest month sabse upar
-        $sort: { month: -1 },
+        $sort: { monthNumber: -1 },
       },
       {
         // STEP 5: Sirf latest month ka data chahiye
@@ -183,55 +239,4 @@ exports.getSingleCountryAvg = async (req, res) => {
   }
 };
 
-exports.getSingleCountryAvg = async (req, res) => {
-  try {
-    const { country } = req.query;
 
-    if (!country) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Country is required" });
-    }
-
-    const averages = await Pricing.aggregate([
-      {
-        // STEP 1: Pehle hi filter karlo taaki load kam ho
-        $match: { Country: country },
-      },
-      {
-        // STEP 2: Grouping by Month
-        $group: {
-          _id: {
-            month: "$Month",
-            country: "$Country",
-          },
-          avgPrice: { $avg: "$Rate" },
-        },
-      },
-      {
-        // STEP 3: Formatting
-        $project: {
-          _id: 0,
-          country: "$_id.country",
-          month: "$_id.month",
-          avgPrice: { $round: ["$avgPrice", 2] },
-        },
-      },
-      {
-        // STEP 4: Latest month sabse upar
-        $sort: { month: -1 },
-      },
-      {
-        // STEP 5: Sirf latest month ka data chahiye
-        $limit: 1,
-      },
-    ]);
-
-    res.status(200).json({
-      success: true,
-      data: averages.length > 0 ? averages[0] : null,
-    });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-};

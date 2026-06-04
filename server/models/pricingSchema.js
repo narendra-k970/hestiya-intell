@@ -8,6 +8,7 @@ const PricingSchema = new mongoose.Schema(
     Technology: { type: String },
     Rate: { type: Number, required: true },
     isRE100: { type: String, enum: ["Yes", "No"], default: "No" },
+    Certification: { type: String, default: "I-REC" },
     addedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
   },
   { timestamps: true },

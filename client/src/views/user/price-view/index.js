@@ -16,6 +16,8 @@ import {
   Icon,
   HStack,
   SimpleGrid,
+  RadioGroup,
+  Radio,
 } from '@chakra-ui/react';
 import {
   MdCalendarToday,
@@ -43,6 +45,20 @@ const getMonthOrder = (month) => {
     'December',
   ];
   return months.indexOf(month);
+};
+
+const normalizeCountry = (name) => {
+  if (!name) return '';
+  let n = name.trim();
+  // Capitalize first letter of each word and lowercase the rest
+  n = n.replace(/\b\w/g, (c) => c.toUpperCase());
+  // Fix specific typos
+  if (n.toLowerCase() === 'argentia') return 'Argentina';
+  if (n.toLowerCase() === 'isreal') return 'Israel';
+  if (n.toLowerCase() === 'sri-lanka') return 'Sri Lanka';
+  if (n.toLowerCase() === 'turkiye') return 'Turkey';
+  if (n.toLowerCase() === 'kazakhstan') return 'Kazakhstan';
+  return n;
 };
 
 function ChangeView({ selectedCountry, geoData }) {
@@ -96,6 +112,7 @@ export default function MarketMapLeaflet() {
   const [selectedCountry, setSelectedCountry] = useState('India');
   const [reFilter, setReFilter] = useState('All');
   const [selectedVintage, setSelectedVintage] = useState('');
+  const [selectedCert, setSelectedCert] = useState('I-REC');
 
   const bg = useColorModeValue('#F4F7FE', '#0B1437');
   const cardBg = useColorModeValue('white', '#111C44');
@@ -148,23 +165,29 @@ export default function MarketMapLeaflet() {
     [data],
   );
   const allCountries = useMemo(
-    () => [...new Set(data.map((item) => item.country))].filter(Boolean).sort(),
+    () => [...new Set(data.map((item) => normalizeCountry(item.country)))].filter(Boolean).sort(),
     [data],
+  );
+  const allCerts = useMemo(
+    () => [...new Set(data.map((item) => item.certification || 'I-REC'))].filter(Boolean).sort(),
+    [data]
   );
 
   // Unified Filter Logic for RE and Non-RE
   const selectedInfo = useMemo(() => {
-    const selCountry = selectedCountry.toLowerCase().trim();
+    const selCountry = normalizeCountry(selectedCountry).toLowerCase();
 
     // 1. Initial Check
     if (!data.length || !selectedMonth) return null;
 
     // 2. Current Month Filtered Data
     const filtered = data.filter((item) => {
+      const itemCert = item.certification || 'I-REC';
       return (
-        (item.country || '').toLowerCase().trim() === selCountry &&
+        normalizeCountry(item.country).toLowerCase() === selCountry &&
         item.month === selectedMonth &&
-        (reFilter === 'All' || item.isRE100 === reFilter)
+        (reFilter === 'All' || item.isRE100 === reFilter) &&
+        (selectedCert === 'All' || itemCert === selectedCert)
       );
     });
 
@@ -218,10 +241,12 @@ export default function MarketMapLeaflet() {
     const prevMonthName = prevMonthIdx > 0 ? monthsArr[prevMonthIdx - 1] : null;
 
     const prevFiltered = data.filter((item) => {
+      const itemCert = item.certification || 'I-REC';
       return (
-        (item.country || '').toLowerCase().trim() === selCountry &&
+        normalizeCountry(item.country).toLowerCase() === selCountry &&
         item.month === prevMonthName &&
-        (reFilter === 'All' || item.isRE100 === reFilter)
+        (reFilter === 'All' || item.isRE100 === reFilter) &&
+        (selectedCert === 'All' || itemCert === selectedCert)
       );
     });
 
@@ -258,7 +283,7 @@ export default function MarketMapLeaflet() {
         ),
       ].filter(Boolean),
     };
-  }, [data, selectedCountry, selectedMonth, reFilter, selectedVintage]);
+  }, [data, selectedCountry, selectedMonth, reFilter, selectedVintage, selectedCert]);
   if (loading)
     return (
       <Flex justify="center" align="center" h="100vh" bg={bg}>
@@ -281,6 +306,22 @@ export default function MarketMapLeaflet() {
         borderColor={borderColor}
         boxShadow="xl"
       >
+        <Box mb="25px" pb="15px" borderBottom="1px solid" borderColor={borderColor}>
+          <RadioGroup value={selectedCert} onChange={setSelectedCert}>
+            <Stack direction="row" spacing={6}>
+              <Radio value="I-REC" colorScheme="green" size="lg">
+                <Text fontWeight="bold" color={textColor}>I-RECs</Text>
+              </Radio>
+              <Radio value="GEC" colorScheme="green" size="lg">
+                <Text fontWeight="bold" color={textColor}>GEC</Text>
+              </Radio>
+              <Radio value="GO" colorScheme="green" size="lg">
+                <Text fontWeight="bold" color={textColor}>GO</Text>
+              </Radio>
+            </Stack>
+          </RadioGroup>
+        </Box>
+
         <Flex
           direction={{ base: 'column', md: 'row' }}
           justify="space-between"
