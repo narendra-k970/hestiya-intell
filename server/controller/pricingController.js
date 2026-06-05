@@ -11,23 +11,34 @@ exports.uploadMarketPricing = async (req, res) => {
       });
     }
 
-    // 1. Pata karo ki is batch mein kaunsa mahina hai
-    const uploadMonth = rawData[0].Month;
+    const uploadMonth = rawData[0].Month || "Market";
+    // 1 & 2. DUPLICATE CHECK: Sirf wahi (Month + Certification) delete karo jo file mein upload ho raha hai.
+    // Taki purana dusre certificates ka data delete na ho (e.g. I-REC na ude agar GEC upload ho raha hai).
+    const combinationsToDelete = [];
+    rawData.forEach(item => {
+      const month = item.Month;
+      const cert = item.Certification || item.Certificate || "Evident";
+      if (month) {
+        const key = `${month}_${cert}`;
+        if (!combinationsToDelete.find(c => c.key === key)) {
+          combinationsToDelete.push({ key, Month: month, Certification: cert });
+        }
+      }
+    });
 
-    // 2. DUPLICATE CHECK: Same mahine ka purana data delete
-    if (uploadMonth) {
-      await Pricing.deleteMany({ Month: uploadMonth });
+    for (const combo of combinationsToDelete) {
+      await Pricing.deleteMany({ Month: combo.Month, Certification: combo.Certification });
     }
 
     // 3. Data Mapping - 'Type' ko 'Technology' mein map karna
     const formattedData = rawData.map((item) => ({
       Country: item.Country,
       Month: item.Month,
-      Vintage: item.Vintage,
+      Vintage: String(item.Vintage || item.vintage || item["Vintage "] || item.Year || "Unknown"),
       Technology: item.Technology || item["Type "] || item.Type || "N/A",
       Rate: Number(item.Rate || 0),
       isRE100: item.isRE100 || "No",
-      Certification: item.Certification || item.Certificate || "I-REC",
+      Certification: item.Certification || item.Certificate || "Evident",
       addedBy: req.user ? req.user._id : null,
     }));
 

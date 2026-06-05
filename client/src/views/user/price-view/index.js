@@ -112,7 +112,7 @@ export default function MarketMapLeaflet() {
   const [selectedCountry, setSelectedCountry] = useState('India');
   const [reFilter, setReFilter] = useState('All');
   const [selectedVintage, setSelectedVintage] = useState('');
-  const [selectedCert, setSelectedCert] = useState('I-REC');
+  const [selectedCert, setSelectedCert] = useState('Evident');
 
   const bg = useColorModeValue('#F4F7FE', '#0B1437');
   const cardBg = useColorModeValue('white', '#111C44');
@@ -164,12 +164,21 @@ export default function MarketMapLeaflet() {
     () => [...new Set(data.map((item) => item.month))].filter(Boolean),
     [data],
   );
-  const allCountries = useMemo(
-    () => [...new Set(data.map((item) => normalizeCountry(item.country)))].filter(Boolean).sort(),
-    [data],
-  );
+  const availableCountries = useMemo(() => {
+    const certData = data.filter(item => {
+      const itemCert = item.certification || 'Evident';
+      return selectedCert === 'All' || itemCert === selectedCert;
+    });
+    return [...new Set(certData.map((item) => normalizeCountry(item.country)))].filter(Boolean).sort();
+  }, [data, selectedCert]);
+
+  useEffect(() => {
+    if (availableCountries.length > 0 && !availableCountries.includes(selectedCountry)) {
+      setSelectedCountry(availableCountries[0]);
+    }
+  }, [availableCountries, selectedCountry]);
   const allCerts = useMemo(
-    () => [...new Set(data.map((item) => item.certification || 'I-REC'))].filter(Boolean).sort(),
+    () => [...new Set(data.map((item) => item.certification || 'Evident'))].filter(Boolean).sort(),
     [data]
   );
 
@@ -182,7 +191,7 @@ export default function MarketMapLeaflet() {
 
     // 2. Current Month Filtered Data
     const filtered = data.filter((item) => {
-      const itemCert = item.certification || 'I-REC';
+      const itemCert = item.certification || 'Evident';
       return (
         normalizeCountry(item.country).toLowerCase() === selCountry &&
         item.month === selectedMonth &&
@@ -241,7 +250,7 @@ export default function MarketMapLeaflet() {
     const prevMonthName = prevMonthIdx > 0 ? monthsArr[prevMonthIdx - 1] : null;
 
     const prevFiltered = data.filter((item) => {
-      const itemCert = item.certification || 'I-REC';
+      const itemCert = item.certification || 'Evident';
       return (
         normalizeCountry(item.country).toLowerCase() === selCountry &&
         item.month === prevMonthName &&
@@ -309,13 +318,13 @@ export default function MarketMapLeaflet() {
         <Box mb="25px" pb="15px" borderBottom="1px solid" borderColor={borderColor}>
           <RadioGroup value={selectedCert} onChange={setSelectedCert}>
             <Stack direction="row" spacing={6}>
-              <Radio value="I-REC" colorScheme="green" size="lg">
+              <Radio value="Evident" colorScheme="green" size="lg">
                 <Text fontWeight="bold" color={textColor}>I-RECs</Text>
               </Radio>
-              <Radio value="GEC" colorScheme="green" size="lg">
+              <Radio value="NEA" colorScheme="green" size="lg">
                 <Text fontWeight="bold" color={textColor}>GEC</Text>
               </Radio>
-              <Radio value="GO" colorScheme="green" size="lg">
+              <Radio value="AIB" colorScheme="green" size="lg">
                 <Text fontWeight="bold" color={textColor}>GO</Text>
               </Radio>
             </Stack>
@@ -383,7 +392,7 @@ export default function MarketMapLeaflet() {
               borderWidth="2px"
               borderRadius="10px"
             >
-              {allCountries.map((c) => (
+              {availableCountries.map((c) => (
                 <option key={c} value={c} style={{ color: 'black' }}>
                   {c}
                 </option>
@@ -520,9 +529,6 @@ export default function MarketMapLeaflet() {
                     lineHeight="1"
                   >
                     ${selectedInfo.avgPrice.toFixed(2)}
-                  </Text>
-                  <Text fontSize="2xs" color="gray.400" mt={1}>
-                    Based on {selectedInfo.totalRecords} Suppliers
                   </Text>
                 </Box>
 
