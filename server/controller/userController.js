@@ -8,8 +8,8 @@ const jwt = require("jsonwebtoken");
 const transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
-    user: "connect@hestiya.com",
-    pass: "tggvqfpgbaczveqn",
+    user: process.env.EMAIL_USER || "connect@hestiya.com",
+    pass: process.env.EMAIL_PASS || "ghypivsiqbrhdgkr",
   },
 });
 
@@ -38,7 +38,7 @@ exports.sendOtp = async (req, res) => {
       "foxmail.com",
       "sina.com",
       "sohu.com",
-      "tom.com"
+      "tom.com",
     ];
     if (blockedDomains.includes(domain)) {
       return res.status(400).json({
@@ -53,7 +53,8 @@ exports.sendOtp = async (req, res) => {
     if (isPurelyNumeric) {
       return res.status(400).json({
         success: false,
-        message: "Registration failed: Emails with purely numeric usernames are not allowed.",
+        message:
+          "Registration failed: Emails with purely numeric usernames are not allowed.",
       });
     }
 
@@ -61,10 +62,15 @@ exports.sendOtp = async (req, res) => {
     const user = await User.findOne({ email: normalizedEmail });
 
     // --- RATE LIMITING CHECK ---
-    if (user && user.otpExpires && (user.otpExpires - Date.now() > 9 * 60 * 1000)) {
+    if (
+      user &&
+      user.otpExpires &&
+      user.otpExpires - Date.now() > 9 * 60 * 1000
+    ) {
       return res.status(429).json({
         success: false,
-        message: "Too many requests. Please wait 1 minute before requesting another OTP.",
+        message:
+          "Too many requests. Please wait 1 minute before requesting another OTP.",
       });
     }
 
@@ -128,11 +134,11 @@ exports.verifyOtp = async (req, res) => {
     const { email, otp } = req.body;
     const normalizedEmail = email.trim().toLowerCase();
     // 1. Check if OTP exists in Temporary Collection
-    const otpRecord = await Otp.findOne({ 
-      email: normalizedEmail, 
-      otp: otp.toString().trim() 
+    const otpRecord = await Otp.findOne({
+      email: normalizedEmail,
+      otp: otp.toString().trim(),
     });
- 
+
     if (!otpRecord) {
       return res.status(400).json({ message: "Invalid or expired OTP" });
     }
@@ -141,11 +147,11 @@ exports.verifyOtp = async (req, res) => {
     const user = await User.findOneAndUpdate(
       { email: normalizedEmail },
       { isEmailVerified: true },
-      { 
-        upsert: true, 
+      {
+        upsert: true,
         new: true,
-        setDefaultsOnInsert: true 
-      }
+        setDefaultsOnInsert: true,
+      },
     );
 
     // 3. Delete OTP record as it's no longer needed
@@ -196,7 +202,7 @@ exports.completeKycAndSignup = async (req, res) => {
     for (const field of requiredFields) {
       if (!kycData[field] || kycData[field].toString().trim() === "") {
         return res.status(400).json({
-          message: `${field.charAt(0).toUpperCase() + field.slice(1).replace(/([A-Z])/g, ' $1')} is required.`,
+          message: `${field.charAt(0).toUpperCase() + field.slice(1).replace(/([A-Z])/g, " $1")} is required.`,
         });
       }
     }
@@ -250,7 +256,8 @@ exports.completeKycAndSignup = async (req, res) => {
 
     res.json({
       success: true,
-      message: "Registration successful! Your account is pending admin approval.",
+      message:
+        "Registration successful! Your account is pending admin approval.",
       user: {
         email: updatedUser.email,
         firstName: updatedUser.firstName,
@@ -427,7 +434,9 @@ exports.forgotPasswordSendOtp = async (req, res) => {
     });
   } catch (err) {
     console.error("ERROR in forgotPasswordSendOtp:", err);
-    return res.status(500).json({ success: false, message: "Internal Server Error." });
+    return res
+      .status(500)
+      .json({ success: false, message: "Internal Server Error." });
   }
 };
 
@@ -455,7 +464,9 @@ exports.resetPassword = async (req, res) => {
     }
 
     if (newPassword.length < 6) {
-      return res.status(400).json({ message: "Password must be at least 6 characters long." });
+      return res
+        .status(400)
+        .json({ message: "Password must be at least 6 characters long." });
     }
 
     const salt = await bcrypt.genSalt(10);
@@ -467,11 +478,14 @@ exports.resetPassword = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      message: "Password reset successfully. You can now login with your new password.",
+      message:
+        "Password reset successfully. You can now login with your new password.",
     });
   } catch (err) {
     console.error("RESET-PASSWORD ERROR:", err.message);
-    return res.status(500).json({ success: false, message: "Internal Server Error" });
+    return res
+      .status(500)
+      .json({ success: false, message: "Internal Server Error" });
   }
 };
 
@@ -486,7 +500,9 @@ exports.approveUser = async (req, res) => {
     );
 
     if (!user) {
-      return res.status(404).json({ success: false, message: "User not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found" });
     }
 
     // Send Approval Email
@@ -543,7 +559,9 @@ exports.rejectUser = async (req, res) => {
     );
 
     if (!user) {
-      return res.status(404).json({ success: false, message: "User not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found" });
     }
 
     // Send Rejection Email

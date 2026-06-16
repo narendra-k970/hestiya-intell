@@ -28,6 +28,7 @@ import {
 import api from '../../../utils/axiosConfig';
 import axios from 'axios';
 import 'leaflet/dist/leaflet.css';
+import indiaGeo from '../../../india.json';
 
 const getMonthOrder = (month) => {
   const months = [
@@ -135,7 +136,18 @@ export default function MarketMapLeaflet() {
         ]);
         const marketData = res.data.data || [];
         setData(marketData);
-        setGeoData(geoRes.data);
+
+        let worldData = geoRes.data;
+        if (indiaGeo && indiaGeo.features && indiaGeo.features.length > 0) {
+          const indiaFeature = indiaGeo.features[0];
+          indiaFeature.id = 'IND';
+          indiaFeature.properties = { ...indiaFeature.properties, name: 'India' };
+          worldData.features = worldData.features.filter(
+            (f) => f.id !== 'IND' && f.properties?.name !== 'India'
+          );
+          worldData.features.push(indiaFeature);
+        }
+        setGeoData(worldData);
 
         // --- YE ADD KAREIN ---
         const months = [
