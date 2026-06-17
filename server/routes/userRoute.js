@@ -19,4 +19,6 @@ router.get("/all", protect, userController.getAllUsers);
 router.patch("/approve/:userId", protect, admin, userController.approveUser);
 router.patch("/reject/:userId", protect, admin, userController.rejectUser);
 
+router.post("/feedback", protect, userController.submitFeedback);
+
 module.exports = router;

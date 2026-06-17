@@ -7,6 +7,12 @@ exports.signup = async (req, res) => {
   try {
     const { name, email, password } = req.body;
 
+    // Password strength validation
+    const passwordRegex = /^(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{6,}$/;
+    if (!passwordRegex.test(password)) {
+      return res.status(400).json({ message: "Password must contain at least 6 characters, including one uppercase letter, one number, and one special character." });
+    }
+
     let user = await User.findOne({ email });
     if (user) return res.status(400).json({ message: "User already exists" });
 

@@ -40,14 +40,21 @@ export default function MarketNewsFeed(props) {
   useEffect(() => {
     const fetchNews = async () => {
       try {
-        const rssUrl =
-          'https://news.google.com/rss/search?q=renewable+energy+I-REC+market&hl=en-IN&gl=IN&ceid=IN:en';
+        // Expanded query using OR to fetch much more news frequently
+        const searchQuery = '("I-REC" OR "renewable energy certificates" OR "carbon credits" OR "green energy market")';
+        const rssUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(searchQuery)}&hl=en-US&gl=US&ceid=US:en`;
+        
         const res = await axios.get(
           `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(rssUrl)}`,
         );
-        if (res.data?.items) setNews(res.data.items.slice(0, 8));
+        
+        if (res.data?.items) {
+          // Filter out items without proper titles and slice more items (e.g. 15 instead of 8)
+          const validNews = res.data.items.filter(item => item.title && item.link);
+          setNews(validNews.slice(0, 15));
+        }
       } catch (err) {
-        console.log('Error fetching news');
+        console.log('Error fetching news', err);
       } finally {
         setLoading(false);
       }

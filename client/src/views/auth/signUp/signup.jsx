@@ -115,6 +115,17 @@ const AuthForm = () => {
   };
 
   const handleFinalSubmit = async () => {
+    const passwordRegex = /^(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{6,}$/;
+    if (!passwordRegex.test(formData.password)) {
+      toast({
+        title: 'Weak Password',
+        description: 'Password must contain at least 6 characters, including one uppercase letter, one number, and one special character.',
+        status: 'warning',
+        duration: 5000,
+      });
+      return;
+    }
+
     setLoading(true);
     try {
       // 4. Updated to use 'api' and short endpoint
@@ -288,7 +299,23 @@ const AuthForm = () => {
                     placeholder="Create Password"
                     borderRadius="16px"
                     onChange={handleChange}
+                    mb="8px"
                   />
+                  {/* Password Validation Indicators */}
+                  <Box mb="8px" ml="4px" fontSize="xs" fontWeight="500" textAlign="left">
+                    <Text color={(formData.password || '').length >= 6 ? "green.500" : "gray.500"}>
+                      {(formData.password || '').length >= 6 ? "✓" : "○"} At least 6 characters
+                    </Text>
+                    <Text color={/[A-Z]/.test(formData.password || '') ? "green.500" : "gray.500"}>
+                      {/[A-Z]/.test(formData.password || '') ? "✓" : "○"} One uppercase letter
+                    </Text>
+                    <Text color={/\d/.test(formData.password || '') ? "green.500" : "gray.500"}>
+                      {/\d/.test(formData.password || '') ? "✓" : "○"} One number
+                    </Text>
+                    <Text color={/[\W_]/.test(formData.password || '') ? "green.500" : "gray.500"}>
+                      {/[\W_]/.test(formData.password || '') ? "✓" : "○"} One special character (!@#$)
+                    </Text>
+                  </Box>
                 </FormControl>
 
                 <Input

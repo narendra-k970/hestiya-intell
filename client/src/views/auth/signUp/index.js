@@ -56,6 +56,20 @@ function SignUp() {
       return;
     }
 
+    // Password strength validation
+    const passwordRegex = /^(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{6,}$/;
+    if (!passwordRegex.test(password)) {
+      toast({
+        title: 'Weak Password',
+        description: 'Password must contain at least 6 characters, including one uppercase letter, one number, and one special character.',
+        status: 'warning',
+        duration: 5000,
+        isClosable: true,
+        position: 'top-right',
+      });
+      return;
+    }
+
     setLoading(true);
     try {
       // 2. API Call using 'api' (Base URL configuration se localhost auto-handle hoga)
@@ -199,8 +213,8 @@ function SignUp() {
               <Input
                 isRequired={true}
                 fontSize="sm"
-                placeholder="Min. 8 characters"
-                mb="24px"
+                placeholder="Min. 6 characters"
+                mb="8px"
                 size="lg"
                 type={show ? 'text' : 'password'}
                 variant="auth"
@@ -216,6 +230,22 @@ function SignUp() {
                 />
               </InputRightElement>
             </InputGroup>
+            
+            {/* Password Validation Indicators */}
+            <Box mb="24px" mt="4px" fontSize="xs" fontWeight="500">
+              <Text color={password.length >= 6 ? "green.500" : "gray.500"}>
+                {password.length >= 6 ? "✓" : "○"} At least 6 characters
+              </Text>
+              <Text color={/[A-Z]/.test(password) ? "green.500" : "gray.500"}>
+                {/[A-Z]/.test(password) ? "✓" : "○"} One uppercase letter
+              </Text>
+              <Text color={/\d/.test(password) ? "green.500" : "gray.500"}>
+                {/\d/.test(password) ? "✓" : "○"} One number
+              </Text>
+              <Text color={/[\W_]/.test(password) ? "green.500" : "gray.500"}>
+                {/[\W_]/.test(password) ? "✓" : "○"} One special character (!@#$)
+              </Text>
+            </Box>
 
             {/* Submit Button */}
             <Button

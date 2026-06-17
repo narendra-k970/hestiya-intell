@@ -31,6 +31,7 @@ import {
   Progress,
   useDisclosure,
   useToast,
+  Textarea,
 } from '@chakra-ui/react';
 import {
   MdEmail,
@@ -45,6 +46,7 @@ import {
   MdVisibility,
   MdVisibilityOff,
   MdCheckCircle,
+  MdFeedback,
 } from 'react-icons/md';
 import api from '../../../utils/axiosConfig';
 
@@ -58,6 +60,11 @@ export default function UserProfile() {
   const [step, setStep] = useState(1); // 1: Send OTP, 2: Enter OTP + Password, 3: Success
   const [resetData, setResetData] = useState({ otp: '', newPassword: '', confirmPassword: '' });
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Feedback Modal State
+  const { isOpen: isFeedbackOpen, onOpen: onFeedbackOpen, onClose: onFeedbackClose } = useDisclosure();
+  const [feedbackText, setFeedbackText] = useState('');
+  const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
 
@@ -167,6 +174,24 @@ export default function UserProfile() {
     }
   };
 
+  const handleFeedbackSubmit = async () => {
+    if (!feedbackText.trim()) {
+      toast({ title: 'Please enter your feedback', status: 'warning' });
+      return;
+    }
+    setIsSubmittingFeedback(true);
+    try {
+      await api.post('/user/feedback', { message: feedbackText });
+      toast({ title: 'Feedback Submitted', description: 'Thank you for your feedback!', status: 'success' });
+      setFeedbackText('');
+      onFeedbackClose();
+    } catch (err) {
+      toast({ title: 'Submission Failed', description: err.response?.data?.message || 'Something went wrong', status: 'error' });
+    } finally {
+      setIsSubmittingFeedback(false);
+    }
+  };
+
   // --- Render ---
   if (loading)
     return (
@@ -234,18 +259,31 @@ export default function UserProfile() {
           </VStack>
         </HStack>
 
-        {/* Reset Password Button */}
-        <Button
-          leftIcon={<Icon as={MdLock} />}
-          colorScheme="green"
-          variant="outline"
-          size="sm"
-          borderRadius="12px"
-          onClick={handleOpenModal}
-          _hover={{ bg: brandGreen, color: 'white' }}
-        >
-          Reset Password
-        </Button>
+        {/* Action Buttons */}
+        <HStack spacing={4}>
+          <Button
+            leftIcon={<Icon as={MdLock} />}
+            colorScheme="green"
+            variant="outline"
+            size="sm"
+            borderRadius="12px"
+            onClick={handleOpenModal}
+            _hover={{ bg: brandGreen, color: 'white' }}
+          >
+            Reset Password
+          </Button>
+          <Button
+            leftIcon={<Icon as={MdFeedback} />}
+            bg={brandGreen}
+            color="white"
+            size="sm"
+            borderRadius="12px"
+            onClick={onFeedbackOpen}
+            _hover={{ bg: '#1a7a45' }}
+          >
+            Give Feedback
+          </Button>
+        </HStack>
       </Flex>
 
       <Divider mb="40px" borderColor={borderColor} />
@@ -449,6 +487,42 @@ export default function UserProfile() {
               </VStack>
             )}
           </ModalBody>
+        </ModalContent>
+      </Modal>
+
+      {/* ── Feedback Modal ── */}
+      <Modal isOpen={isFeedbackOpen} onClose={onFeedbackClose} isCentered>
+        <ModalOverlay backdropFilter="blur(4px)" />
+        <ModalContent borderRadius="2xl" mx={4} p={2}>
+          <ModalHeader>Give Us Feedback</ModalHeader>
+          <ModalCloseButton mt={3} />
+          <ModalBody>
+            <Text fontSize="sm" color="gray.500" mb={4}>
+              We value your thoughts! Let us know how we can improve your experience.
+            </Text>
+            <Textarea
+              placeholder="Type your feedback here..."
+              rows={5}
+              borderRadius="12px"
+              value={feedbackText}
+              onChange={(e) => setFeedbackText(e.target.value)}
+            />
+          </ModalBody>
+          <ModalFooter>
+            <Button variant="ghost" mr={3} onClick={onFeedbackClose} borderRadius="12px">
+              Cancel
+            </Button>
+            <Button
+              bg={brandGreen}
+              color="white"
+              onClick={handleFeedbackSubmit}
+              isLoading={isSubmittingFeedback}
+              borderRadius="12px"
+              _hover={{ bg: '#1a7a45' }}
+            >
+              Submit
+            </Button>
+          </ModalFooter>
         </ModalContent>
       </Modal>
 

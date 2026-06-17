@@ -1,5 +1,6 @@
 const User = require("../models/userModel");
 const Otp = require("../models/otpModel");
+const Feedback = require("../models/feedbackModel");
 const nodemailer = require("nodemailer");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
@@ -184,10 +185,9 @@ exports.completeKycAndSignup = async (req, res) => {
         .json({ message: "Email not verified or session expired." });
     }
 
-    if (!password || password.length < 6) {
-      return res
-        .status(400)
-        .json({ message: "Password must be at least 6 characters long." });
+    const passwordRegex = /^(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{6,}$/;
+    if (!passwordRegex.test(password)) {
+      return res.status(400).json({ message: "Password must contain at least 6 characters, including one uppercase letter, one number, and one special character." });
     }
 
     // --- KYC MANDATORY FIELD VALIDATION (Excluding displayPicture) ---
@@ -463,10 +463,9 @@ exports.resetPassword = async (req, res) => {
       return res.status(400).json({ message: "OTP expired" });
     }
 
-    if (newPassword.length < 6) {
-      return res
-        .status(400)
-        .json({ message: "Password must be at least 6 characters long." });
+    const passwordRegex = /^(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{6,}$/;
+    if (!passwordRegex.test(newPassword)) {
+      return res.status(400).json({ message: "Password must contain at least 6 characters, including one uppercase letter, one number, and one special character." });
     }
 
     const salt = await bcrypt.genSalt(10);
@@ -606,5 +605,42 @@ exports.rejectUser = async (req, res) => {
   } catch (err) {
     console.error("Error rejecting user:", err.message);
     res.status(500).json({ success: false, message: "Internal Server Error" });
+  }
+};
+
+// --- 11. SUBMIT FEEDBACK ---
+exports.submitFeedback = async (req, res) => {
+  try {
+    const { message } = req.body;
+    
+    if (!message) {
+      return res.status(400).json({ message: "Feedback message is required." });
+    }
+
+    const userId = req.user.id || req.user._id;
+    // user detail should be fetched to save email, phone, name
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found." });
+    }
+
+    const newFeedback = new Feedback({
+      userId: user._id,
+      name: `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'User',
+      email: user.email,
+      phoneNumber: user.phoneNumber || '',
+      message: message,
+    });
+
+    await newFeedback.save();
+
+    return res.status(201).json({
+      success: true,
+      message: "Feedback submitted successfully.",
+    });
+  } catch (err) {
+    console.error("ERROR in submitFeedback:", err.message);
+    return res.status(500).json({ message: "Internal Server Error" });
   }
 };

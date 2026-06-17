@@ -26,4 +26,24 @@ axiosInstance.interceptors.request.use(
   },
 );
 
+// 3. Response Interceptor for auto-logout on Token Expiry
+axiosInstance.interceptors.response.use(
+  (response) => {
+    return response;
+  },
+  (error) => {
+    if (error.response && error.response.status === 401) {
+      // Token expire ho gaya hai, user ko logout karo
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      
+      // Login page par bhej do
+      if (!window.location.pathname.includes('/auth/sign-in')) {
+        window.location.href = '/auth/sign-in';
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+
 export default axiosInstance;
