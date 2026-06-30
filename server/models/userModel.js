@@ -37,6 +37,7 @@ const userSchema = new mongoose.Schema(
     otpExpires: { type: Date, default: null },
     isEmailVerified: { type: Boolean, default: false },
     isKycCompleted: { type: Boolean, default: false },
+    isActive: { type: Boolean, default: true },
 
     displayPicture: { type: String, default: "" },
     firstName: { type: String, trim: true, default: "" },

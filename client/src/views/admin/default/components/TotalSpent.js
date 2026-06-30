@@ -172,7 +172,7 @@ export default function TotalSpent(props) {
     >
       <Flex justify="space-between" align="center" w="100%" mb="20px">
         <VStack align="start" spacing="2px">
-          <Text color={textColor} fontSize="xl" fontWeight="700">
+          <Text color={textColor} fontSize="lg" fontWeight="700">
             Detailed Pricing Sync
           </Text>
           <HStack spacing="5px">

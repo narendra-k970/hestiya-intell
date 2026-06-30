@@ -22,7 +22,15 @@ import MiniStatistics from 'components/card/MiniStatistics';
 import IconBox from 'components/icons/IconBox';
 import TotalSpent from 'views/admin/default/components/TotalSpent';
 import WeeklyRevenue from 'views/admin/default/components/WeeklyRevenue';
+import UserFeedbackFeed from 'views/admin/default/components/UserFeedbackFeed';
 import api from '../../../utils/axiosConfig';
+
+import { keyframes } from '@emotion/react';
+
+const scrollAnim = keyframes`
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+`;
 
 export default function UserReports() {
   // --- 1. HOOKS ---
@@ -163,29 +171,22 @@ export default function UserReports() {
         {/* Infinite Marquee Container */}
         <Box whiteSpace="nowrap" flex="1" overflow="hidden" display="flex">
           <Box
-            display="inline-block"
-            as="div"
+            display="flex"
+            alignItems="center"
             sx={{
-              display: 'inline-block',
               whiteSpace: 'nowrap',
-              animation: 'infinite-scroll 60s linear infinite',
-              '@keyframes infinite-scroll': {
-                '0%': { transform: 'translateX(100%)' },
-                '100%': { transform: 'translateX(-100%)' },
-              },
+              animation: `${scrollAnim} 40s linear infinite`,
               fontSize: '14px',
               fontWeight: '500',
             }}
           >
-            <Text as="span">
+            <Text as="span" px="50px">
               I-REC Prices are stabilizing across Southeast Asia • Current
               Average Market Rate: ${stats?.avgPrice || '0.00'} • Total Verified
               Market Volume reached {stats?.volume || '0'} MWh • Global
               Renewable Energy Demand is rising across all regions.
             </Text>
-
-            {/* Same text again with a separator to create a seamless bridge */}
-            <Text as="span" ml="100px">
+            <Text as="span" px="50px">
               I-REC Prices are stabilizing across Southeast Asia • Current
               Average Market Rate: ${stats?.avgPrice || '0.00'} • Total Verified
               Market Volume reached {stats?.volume || '0'} MWh • Global
@@ -260,7 +261,8 @@ export default function UserReports() {
         />
       </SimpleGrid>
 
-      <SimpleGrid columns={{ base: 1, md: 2 }} gap="20px">
+      {/* Row 1: Pricing and News */}
+      <SimpleGrid columns={{ base: 1, md: 2 }} gap="20px" mb="20px">
         <TotalSpent />
         <WeeklyRevenue />
       </SimpleGrid>

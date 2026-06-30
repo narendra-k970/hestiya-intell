@@ -285,6 +285,10 @@ exports.login = async (req, res) => {
       return res.status(401).json({ message: "Invalid email or password" });
     }
 
+    if (user.isActive === false) {
+      return res.status(403).json({ message: "Your account has been deactivated." });
+    }
+
     // 2. KYC Check
     if (user.role !== "admin" && !user.isKycCompleted) {
       return res.status(403).json({
@@ -644,3 +648,59 @@ exports.submitFeedback = async (req, res) => {
     return res.status(500).json({ message: "Internal Server Error" });
   }
 };
+
+// --- 12. DEACTIVATE ACCOUNT ---
+exports.deactivateAccount = async (req, res) => {
+  try {
+    const userId = req.user.id || req.user._id;
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found." });
+    }
+
+    user.isActive = false;
+    await user.save({ validateBeforeSave: false });
+
+    return res.status(200).json({
+      success: true,
+      message: "Account deactivated successfully.",
+    });
+  } catch (err) {
+    console.error("ERROR in deactivateAccount:", err.message);
+    return res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+
+// --- 13. GET ALL FEEDBACK ---
+exports.getAllFeedback = async (req, res) => {
+  try {
+    const feedbacks = await Feedback.find().sort({ createdAt: -1 }).limit(20);
+    return res.status(200).json({ success: true, data: feedbacks });
+  } catch (err) {
+    console.error("ERROR in getAllFeedback:", err.message);
+    return res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+
+// --- 14. GET MARKET NEWS ---
+exports.getMarketNews = async (req, res) => {
+  try {
+    const searchQuery = '("I-REC" OR "renewable energy certificates" OR "carbon credits" OR "green energy market")';
+    const rssUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(searchQuery)}&hl=en-US&gl=US&ceid=US:en`;
+    
+    const response = await fetch(rssUrl);
+    if (!response.ok) {
+      throw new Error(`Google News returned ${response.status}`);
+    }
+    const xmlText = await response.text();
+    
+    res.set('Content-Type', 'application/xml');
+    return res.status(200).send(xmlText);
+  } catch (error) {
+    console.error("News fetch error:", error);
+    return res.status(500).json({ message: "Failed to fetch news" });
+  }
+};
+
+

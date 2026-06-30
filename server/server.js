@@ -18,10 +18,15 @@ const app = express();
 // Middleware
 app.use(
   cors({
-    origin: ["http://localhost:3000", "http://localhost:3001"],
+    origin: [
+      "http://localhost:3000",
+      "http://localhost:3001",
+      "https://marketplace.hestiya.com",
+      "https://intelligence.hestiya.com",
+    ],
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     credentials: true,
-  })
+  }),
 );
 
 app.use(express.json({ limit: "50mb" }));

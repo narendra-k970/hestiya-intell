@@ -21,7 +21,7 @@ import {
 } from '@chakra-ui/react';
 import Card from 'components/card/Card.js';
 import React, { useEffect, useState } from 'react';
-import axios from 'axios';
+import api from '../../../../utils/axiosConfig';
 import { MdOutlineNewspaper, MdAccessTime, MdLaunch } from 'react-icons/md';
 
 export default function MarketNewsFeed(props) {
@@ -40,18 +40,17 @@ export default function MarketNewsFeed(props) {
   useEffect(() => {
     const fetchNews = async () => {
       try {
-        // Expanded query using OR to fetch much more news frequently
-        const searchQuery = '("I-REC" OR "renewable energy certificates" OR "carbon credits" OR "green energy market")';
-        const rssUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(searchQuery)}&hl=en-US&gl=US&ceid=US:en`;
+        const res = await api.get('/user/news');
         
-        const res = await axios.get(
-          `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(rssUrl)}`,
-        );
-        
-        if (res.data?.items) {
-          // Filter out items without proper titles and slice more items (e.g. 15 instead of 8)
-          const validNews = res.data.items.filter(item => item.title && item.link);
-          setNews(validNews.slice(0, 15));
+        if (res.data) {
+          const parser = new DOMParser();
+          const xmlDoc = parser.parseFromString(res.data, 'text/xml');
+          const items = Array.from(xmlDoc.querySelectorAll('item')).map((item) => ({
+            title: item.querySelector('title')?.textContent,
+            link: item.querySelector('link')?.textContent,
+            pubDate: item.querySelector('pubDate')?.textContent,
+          }));
+          setNews(items.slice(0, 15));
         }
       } catch (err) {
         console.log('Error fetching news', err);

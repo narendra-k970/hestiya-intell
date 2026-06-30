@@ -47,6 +47,7 @@ import {
   MdVisibilityOff,
   MdCheckCircle,
   MdFeedback,
+  MdDelete,
 } from 'react-icons/md';
 import api from '../../../utils/axiosConfig';
 
@@ -65,6 +66,11 @@ export default function UserProfile() {
   const { isOpen: isFeedbackOpen, onOpen: onFeedbackOpen, onClose: onFeedbackClose } = useDisclosure();
   const [feedbackText, setFeedbackText] = useState('');
   const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false);
+
+  // Deactivate Modal State
+  const { isOpen: isDeactivateOpen, onOpen: onDeactivateOpen, onClose: onDeactivateClose } = useDisclosure();
+  const [isDeactivating, setIsDeactivating] = useState(false);
+
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
 
@@ -192,6 +198,22 @@ export default function UserProfile() {
     }
   };
 
+  const handleDeactivate = async () => {
+    setIsDeactivating(true);
+    try {
+      await api.patch('/user/deactivate');
+      toast({ title: 'Account Deactivated', description: 'You have been logged out safely.', status: 'info', duration: 4000 });
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      window.location.href = '/auth/sign-in';
+    } catch (err) {
+      toast({ title: 'Deactivation Failed', description: err.response?.data?.message || 'Something went wrong', status: 'error' });
+    } finally {
+      setIsDeactivating(false);
+      onDeactivateClose();
+    }
+  };
+
   // --- Render ---
   if (loading)
     return (
@@ -249,12 +271,6 @@ export default function UserProfile() {
               >
                 {user?.isKycCompleted ? 'KYC VERIFIED' : 'KYC PENDING'}
               </Badge>
-              <Badge colorScheme="blue" px={3} borderRadius="full">
-                {user?.plan || 'Standard Plan'}
-              </Badge>
-              <Text fontSize="sm" color="gray.500" fontWeight="600">
-                ID: {user?._id?.slice(-6).toUpperCase()}
-              </Text>
             </HStack>
           </VStack>
         </HStack>
@@ -282,6 +298,16 @@ export default function UserProfile() {
             _hover={{ bg: '#1a7a45' }}
           >
             Give Feedback
+          </Button>
+          <Button
+            leftIcon={<Icon as={MdDelete} />}
+            colorScheme="red"
+            variant="outline"
+            size="sm"
+            borderRadius="12px"
+            onClick={onDeactivateOpen}
+          >
+            Deactivate
           </Button>
         </HStack>
       </Flex>
@@ -521,6 +547,36 @@ export default function UserProfile() {
               _hover={{ bg: '#1a7a45' }}
             >
               Submit
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+
+      {/* ── Deactivate Account Modal ── */}
+      <Modal isOpen={isDeactivateOpen} onClose={onDeactivateClose} isCentered>
+        <ModalOverlay backdropFilter="blur(4px)" />
+        <ModalContent borderRadius="2xl" mx={4} p={2}>
+          <ModalHeader color="red.500">Deactivate Account</ModalHeader>
+          <ModalCloseButton mt={3} />
+          <ModalBody>
+            <Text fontSize="md" fontWeight="bold" mb={2}>
+              Are you sure you want to deactivate your account?
+            </Text>
+            <Text fontSize="sm" color="gray.500">
+              You will be immediately logged out, and you will not be able to log back in until an administrator reactivates your account. Your data will not be deleted, but your access will be blocked.
+            </Text>
+          </ModalBody>
+          <ModalFooter>
+            <Button variant="ghost" mr={3} onClick={onDeactivateClose} borderRadius="12px">
+              Cancel
+            </Button>
+            <Button
+              colorScheme="red"
+              onClick={handleDeactivate}
+              isLoading={isDeactivating}
+              borderRadius="12px"
+            >
+              Yes, Deactivate
             </Button>
           </ModalFooter>
         </ModalContent>
