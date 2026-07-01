@@ -378,11 +378,14 @@ export default function UserMarketDashboard() {
               height={{ base: '350px', md: '60vh' }}
               borderRadius="18px"
               overflow="hidden"
+              position="relative"
+              zIndex={0}
+              isolation="isolate"
             >
               <MapContainer
                 center={[20, 20]}
                 zoom={3}
-                style={{ height: '100%', width: '100%' }}
+                style={{ height: '100%', width: '100%', zIndex: 0 }}
                 ref={mapRef}
               >
                 <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />

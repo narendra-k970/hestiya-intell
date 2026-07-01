@@ -134,7 +134,57 @@ export default function MarketMapLeaflet() {
             'https://raw.githubusercontent.com/johan/world.geo.json/master/countries.geo.json',
           ),
         ]);
-        const marketData = res.data.data || [];
+        let rawMarketData = res.data.data || [];
+        
+        // --- ADD DUMMY DATA LOGIC START ---
+        const allMonthsList = [
+          'January', 'February', 'March', 'April', 'May', 'June'
+        ];
+        
+        const grouped = {};
+        rawMarketData.forEach(item => {
+          const key = `${item.country}-${item.certification || 'Evident'}-${item.isRE100}`;
+          if (!grouped[key]) {
+            grouped[key] = { baseItem: item, items: [] };
+          }
+          grouped[key].items.push(item);
+        });
+
+        const augmentedMarketData = [...rawMarketData];
+        
+        Object.values(grouped).forEach(group => {
+          const { baseItem, items } = group;
+          const basePrice = baseItem.avgPrice || 0;
+          
+          allMonthsList.forEach(month => {
+            const itemsForMonth = items.filter(i => i.month === month);
+            
+            // If month is missing completely
+            if (itemsForMonth.length === 0) {
+              augmentedMarketData.push({
+                ...baseItem,
+                month: month,
+                vintage: '2026', // Ensure 2026 vintage
+                avgPrice: Math.max(0, basePrice - 0.1) // Kam karke price lagaya
+              });
+            } else {
+              // If month exists but 2026 vintage is missing
+              const has2026 = itemsForMonth.some(i => String(i.vintage) === '2026');
+              if (!has2026) {
+                augmentedMarketData.push({
+                  ...itemsForMonth[0], 
+                  month: month,
+                  vintage: '2026',
+                  avgPrice: Math.max(0, (itemsForMonth[0].avgPrice || 0.1) - 0.1)
+                });
+              }
+            }
+          });
+        });
+        
+        const marketData = augmentedMarketData;
+        // --- ADD DUMMY DATA LOGIC END ---
+
         setData(marketData);
 
         let worldData = geoRes.data;
@@ -424,11 +474,12 @@ export default function MarketMapLeaflet() {
             borderColor="green.500"
             position="relative"
             zIndex={0}
+            isolation="isolate"
           >
             <MapContainer
               center={[20.5937, 78.9629]}
               zoom={3}
-              style={{ height: '100%', width: '100%' }}
+              style={{ height: '100%', width: '100%', zIndex: 0 }}
               zoomControl={false}
               // Isko true rakhein taaki map responsive rahe
               scrollWheelZoom={true}
