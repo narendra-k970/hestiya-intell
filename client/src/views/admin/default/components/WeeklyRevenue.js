@@ -45,11 +45,25 @@ export default function MarketNewsFeed(props) {
         if (res.data) {
           const parser = new DOMParser();
           const xmlDoc = parser.parseFromString(res.data, 'text/xml');
-          const items = Array.from(xmlDoc.querySelectorAll('item')).map((item) => ({
-            title: item.querySelector('title')?.textContent,
-            link: item.querySelector('link')?.textContent,
-            pubDate: item.querySelector('pubDate')?.textContent,
-          }));
+          const items = Array.from(xmlDoc.querySelectorAll('item')).map((item) => {
+            const desc = item.querySelector('description')?.textContent;
+            const content = item.getElementsByTagName('content:encoded')[0]?.textContent;
+            const author = item.querySelector('author')?.textContent || item.getElementsByTagName('dc:creator')[0]?.textContent;
+            
+            let thumbnail = item.querySelector('enclosure')?.getAttribute('url');
+            if (!thumbnail) thumbnail = item.getElementsByTagName('media:content')[0]?.getAttribute('url');
+            if (!thumbnail) thumbnail = item.getElementsByTagName('media:thumbnail')[0]?.getAttribute('url');
+
+            return {
+              title: item.querySelector('title')?.textContent,
+              link: item.querySelector('link')?.textContent,
+              pubDate: item.querySelector('pubDate')?.textContent,
+              description: desc,
+              content: content,
+              author: author,
+              thumbnail: thumbnail,
+            };
+          });
           setNews(items.slice(0, 15));
         }
       } catch (err) {
