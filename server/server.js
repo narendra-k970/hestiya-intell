@@ -24,6 +24,8 @@ app.use(
       "http://localhost:5173",
       "https://marketplace.hestiya.com",
       "https://intelligence.hestiya.com",
+      "https://www.hestiya.com",
+      "https://hestiya.com"
     ],
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     credentials: true,
