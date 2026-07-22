@@ -138,7 +138,7 @@ export default function MarketMapLeaflet() {
         
         // --- ADD DUMMY DATA LOGIC START ---
         const allMonthsList = [
-          'January', 'February', 'March', 'April', 'May', 'June'
+          'January', 'February', 'March', 'April', 'May', 'June', 'July'
         ];
         
         const grouped = {};
