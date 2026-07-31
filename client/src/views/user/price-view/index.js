@@ -59,6 +59,7 @@ const normalizeCountry = (name) => {
   if (n.toLowerCase() === 'sri-lanka') return 'Sri Lanka';
   if (n.toLowerCase() === 'turkiye') return 'Turkey';
   if (n.toLowerCase() === 'kazakhstan') return 'Kazakhstan';
+  if (n.toLowerCase() === 'nimibia' || n.toLowerCase() === 'nambia') return 'Namibia';
   return n;
 };
 
@@ -75,6 +76,7 @@ function ChangeView({ selectedCountry, geoData }) {
       'sri lanka': { center: [7.8731, 80.7718], zoom: 8 },
       singapore: { center: [1.3521, 103.8198], zoom: 11 },
       uae: { center: [23.4241, 53.8478], zoom: 7 },
+      namibia: { center: [-22.9576, 18.4904], zoom: 5 },
     };
 
     // Case A: Manual Coordinates (Sri Lanka, etc.)
@@ -87,9 +89,13 @@ function ChangeView({ selectedCountry, geoData }) {
     // Case B: GeoJSON Bounds (India, etc.)
     if (geoData && geoData.features) {
       const feature = geoData.features.find((f) => {
-        const name = (f.properties?.name || f.id || '').toLowerCase();
+        const name = (f.properties?.name || '').toLowerCase();
+        const id = (f.id || '').toLowerCase();
         return (
-          name === selName || (selName === 'uae' && name.includes('emirates'))
+          name === selName ||
+          id === selName ||
+          (selName === 'uae' && name.includes('emirates')) ||
+          (selName === 'namibia' && (name.includes('namibia') || id === 'nam'))
         );
       });
 
@@ -533,7 +539,9 @@ export default function MarketMapLeaflet() {
                       (selName === 'sri lanka' &&
                         (geoName.includes('sri lanka') || f.id === 'LKA')) ||
                       (selName === 'uae' &&
-                        (geoName.includes('emirates') || f.id === 'ARE'));
+                        (geoName.includes('emirates') || f.id === 'ARE')) ||
+                      (selName === 'namibia' &&
+                        (geoName.includes('namibia') || f.id === 'NAM'));
 
                     return {
                       fillColor: isMatch
