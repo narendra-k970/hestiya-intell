@@ -32,6 +32,7 @@ function SignIn() {
     try {
       const response = await api.post('/user/auth/login', { email, password });
       localStorage.setItem('token', response.data.token);
+      if (response.data.refreshToken) localStorage.setItem('refreshToken', response.data.refreshToken);
       window.location.href = '/admin/default';
     } catch (e) {
       toast({ title: 'Error', status: 'error', duration: 3000 });

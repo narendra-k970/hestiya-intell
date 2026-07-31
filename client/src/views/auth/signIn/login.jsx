@@ -47,9 +47,10 @@ const Login = () => {
     setLoading(true);
     try {
       const res = await api.post('/user/login', credentials);
-      const { user, token } = res.data;
+      const { user, token, refreshToken } = res.data;
 
       localStorage.setItem('token', token || 'dummy_token');
+      if (refreshToken) localStorage.setItem('refreshToken', refreshToken);
       localStorage.setItem('user', JSON.stringify(user));
 
       toast({ title: 'Login Success', status: 'success', duration: 3000 });

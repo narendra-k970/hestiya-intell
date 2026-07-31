@@ -26,20 +26,72 @@ axiosInstance.interceptors.request.use(
   },
 );
 
+let isRefreshing = false;
+let failedQueue = [];
+
+const processQueue = (error, token = null) => {
+  failedQueue.forEach((prom) => {
+    if (error) {
+      prom.reject(error);
+    } else {
+      prom.resolve(token);
+    }
+  });
+  failedQueue = [];
+};
+
 // 3. Response Interceptor for auto-logout on Token Expiry
 axiosInstance.interceptors.response.use(
   (response) => {
     return response;
   },
-  (error) => {
-    if (error.response && error.response.status === 401) {
-      // Token expire ho gaya hai, user ko logout karo
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      
-      // Login page par bhej do
-      if (!window.location.pathname.includes('/auth/sign-in')) {
-        window.location.href = '/auth/sign-in';
+  async (error) => {
+    const originalRequest = error.config;
+
+    if (error.response && error.response.status === 401 && !originalRequest._retry) {
+      if (isRefreshing) {
+        return new Promise(function (resolve, reject) {
+          failedQueue.push({ resolve, reject });
+        })
+          .then((token) => {
+            originalRequest.headers['Authorization'] = 'Bearer ' + token;
+            return axiosInstance(originalRequest);
+          })
+          .catch((err) => {
+            return Promise.reject(err);
+          });
+      }
+
+      originalRequest._retry = true;
+      isRefreshing = true;
+
+      const refreshToken = localStorage.getItem('refreshToken');
+      if (refreshToken) {
+        try {
+          const { data } = await axios.post(`${BASE_URL}/user/refresh-token`, { refreshToken });
+          localStorage.setItem('token', data.token);
+          axiosInstance.defaults.headers.common['Authorization'] = 'Bearer ' + data.token;
+          originalRequest.headers['Authorization'] = 'Bearer ' + data.token;
+          processQueue(null, data.token);
+          return axiosInstance(originalRequest);
+        } catch (err) {
+          processQueue(err, null);
+          localStorage.removeItem('token');
+          localStorage.removeItem('refreshToken');
+          localStorage.removeItem('user');
+          if (!window.location.pathname.includes('/auth/sign-in')) {
+            window.location.href = '/auth/sign-in';
+          }
+          return Promise.reject(err);
+        } finally {
+          isRefreshing = false;
+        }
+      } else {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        if (!window.location.pathname.includes('/auth/sign-in')) {
+          window.location.href = '/auth/sign-in';
+        }
       }
     }
     return Promise.reject(error);

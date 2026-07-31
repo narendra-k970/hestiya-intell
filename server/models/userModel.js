@@ -67,6 +67,7 @@ const userSchema = new mongoose.Schema(
       enum: ["pending", "approved", "rejected"],
       default: "pending",
     },
+    refreshToken: { type: String, default: null },
   },
   {
     timestamps: true,

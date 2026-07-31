@@ -141,23 +141,37 @@ export default function MarketMapLeaflet() {
           'January', 'February', 'March', 'April', 'May', 'June', 'July'
         ];
         
+        const monthVariation = {
+          'January': 0.02, 'February': -0.01, 'March': 0.03, 'April': -0.02,
+          'May': 0.01, 'June': -0.03, 'July': 0.04, 'August': -0.01,
+          'September': 0.02, 'October': -0.02, 'November': 0.01, 'December': 0.03
+        };
+        
         const grouped = {};
         rawMarketData.forEach(item => {
           const key = `${item.country}-${item.certification || 'Evident'}-${item.isRE100}`;
           if (!grouped[key]) {
-            grouped[key] = { baseItem: item, items: [] };
+            grouped[key] = { items: [] };
           }
           grouped[key].items.push(item);
         });
 
-        const augmentedMarketData = [...rawMarketData];
+        const augmentedMarketData = [];
         
         Object.values(grouped).forEach(group => {
-          const { baseItem, items } = group;
-          const basePrice = baseItem.avgPrice || 0;
+          const { items } = group;
+          
+          // Find a valid non-zero base price from this group
+          const validItems = items.filter(i => i.avgPrice && i.avgPrice > 0);
+          let basePrice = 1.2; // fallback if entirely 0 or missing
+          if (validItems.length > 0) {
+            basePrice = validItems[0].avgPrice;
+          }
+          const baseItem = validItems.length > 0 ? validItems[0] : items[0];
           
           allMonthsList.forEach(month => {
             const itemsForMonth = items.filter(i => i.month === month);
+            const varFactor = 1 + (monthVariation[month] || 0);
             
             // If month is missing completely
             if (itemsForMonth.length === 0) {
@@ -165,17 +179,29 @@ export default function MarketMapLeaflet() {
                 ...baseItem,
                 month: month,
                 vintage: '2026', // Ensure 2026 vintage
-                avgPrice: Math.max(0, basePrice - 0.1) // Kam karke price lagaya
+                avgPrice: basePrice * varFactor
               });
             } else {
-              // If month exists but 2026 vintage is missing
+              // Month exists, ensure prices are not zero
+              itemsForMonth.forEach(item => {
+                let priceToUse = item.avgPrice;
+                if (!priceToUse || priceToUse <= 0) {
+                  priceToUse = basePrice * varFactor;
+                }
+                augmentedMarketData.push({
+                  ...item,
+                  avgPrice: priceToUse
+                });
+              });
+              
+              // Ensure 2026 vintage is also present for this month
               const has2026 = itemsForMonth.some(i => String(i.vintage) === '2026');
               if (!has2026) {
                 augmentedMarketData.push({
                   ...itemsForMonth[0], 
                   month: month,
                   vintage: '2026',
-                  avgPrice: Math.max(0, (itemsForMonth[0].avgPrice || 0.1) - 0.1)
+                  avgPrice: basePrice * varFactor
                 });
               }
             }

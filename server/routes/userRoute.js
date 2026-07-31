@@ -11,6 +11,7 @@ router.post("/verify-otp", userController.verifyOtp);
 router.post("/complete-signup", userController.completeKycAndSignup);
 
 router.post("/login", userController.login);
+router.post("/refresh-token", userController.refreshToken);
 router.post("/forgot-password-send-otp", userController.forgotPasswordSendOtp);
 router.post("/reset-password", userController.resetPassword);
 

@@ -323,12 +323,23 @@ exports.login = async (req, res) => {
     const token = jwt.sign(
       { id: user._id, role: user.role || "user" },
       process.env.JWT_SECRET, // Fallback hata dein prod ke liye
-      { expiresIn: "1d" },
+      { expiresIn: "15m" }, // short-lived access token
     );
+
+    const refreshToken = jwt.sign(
+      { id: user._id, role: user.role || "user" },
+      process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET + "_refresh", // using fallback if env is missing
+      { expiresIn: "7d" },
+    );
+
+    // Save refresh token in DB
+    user.refreshToken = refreshToken;
+    await user.save();
 
     res.json({
       success: true,
       token,
+      refreshToken,
       user: {
         id: user._id,
         firstName: user.firstName,
@@ -652,23 +663,59 @@ exports.submitFeedback = async (req, res) => {
 // --- 12. DEACTIVATE ACCOUNT ---
 exports.deactivateAccount = async (req, res) => {
   try {
-    const userId = req.user.id || req.user._id;
-    const user = await User.findById(userId);
-
-    if (!user) {
-      return res.status(404).json({ message: "User not found." });
-    }
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ message: "User not found" });
 
     user.isActive = false;
-    await user.save({ validateBeforeSave: false });
+    await user.save();
 
-    return res.status(200).json({
+    res.json({
       success: true,
-      message: "Account deactivated successfully.",
+      message: "Your account has been successfully deactivated.",
     });
   } catch (err) {
-    console.error("ERROR in deactivateAccount:", err.message);
-    return res.status(500).json({ message: "Internal Server Error" });
+    res.status(500).json({ message: "Server Error", error: err.message });
+  }
+};
+
+// --- Refresh Token Endpoint ---
+exports.refreshToken = async (req, res) => {
+  try {
+    const { refreshToken } = req.body;
+    if (!refreshToken) {
+      return res.status(401).json({ message: "Refresh token is required" });
+    }
+
+    // Verify the refresh token
+    const refreshSecret = process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET + "_refresh";
+    let decoded;
+    try {
+      decoded = jwt.verify(refreshToken, refreshSecret);
+    } catch (err) {
+      return res.status(401).json({ message: "Invalid or expired refresh token" });
+    }
+
+    // Check if user exists and token matches DB
+    const user = await User.findById(decoded.id);
+    if (!user || user.refreshToken !== refreshToken) {
+      return res.status(401).json({ message: "Invalid refresh token" });
+    }
+
+    // Generate new access token
+    const newToken = jwt.sign(
+      { id: user._id, role: user.role || "user" },
+      process.env.JWT_SECRET,
+      { expiresIn: "15m" }
+    );
+
+    res.json({
+      success: true,
+      token: newToken
+    });
+
+  } catch (err) {
+    console.error("Refresh Token Error:", err.message);
+    res.status(500).json({ message: "Internal Server Error" });
   }
 };
 

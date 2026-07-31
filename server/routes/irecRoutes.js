@@ -1,6 +1,9 @@
 const express = require("express");
 const router = express.Router();
 const irecController = require("../controller/irecController");
+const { protect } = require("../middleware/auth");
+
+router.use(protect);
 
 router.post("/save", irecController.saveIrecData);
 
