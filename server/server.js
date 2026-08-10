@@ -39,6 +39,7 @@ app.use("/user/auth", authRoute);
 app.use("/api/irec", irecRoutes);
 app.use("/api/pricing", pricingRoute);
 app.use("/api/user", userRoute);
+app.use("/api/company-profile", require("./routes/companyProfileRoute"));
 
 const PORT = process.env.PORT || 5000;
 

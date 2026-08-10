@@ -25,6 +25,9 @@ const userSchema = new mongoose.Schema(
       validate: {
         validator: function (v) {
           if (!v || !v.includes("@")) return false;
+          // Admins ke liye personal email allow kar diya
+          if (this && this.role === 'admin') return true;
+          
           const domain = v.split("@")[1].toLowerCase();
           return !BLOCKED_DOMAINS.includes(domain);
         },
@@ -83,6 +86,8 @@ userSchema.pre("save", async function () {
   // 1. Agar email change nahi hua hai, toh validation skip karein
   // Isse verify-otp ke waqt faltu validation nahi chalegi
   if (!this.isModified("email")) return;
+  // Admins ko personal email use karne ki permission
+  if (this.role === "admin") return;
 
   const domain = this.email.split("@")[1]?.toLowerCase();
 

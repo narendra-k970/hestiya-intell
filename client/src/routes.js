@@ -7,6 +7,7 @@ import {
   MdUploadFile,
   MdMap,
   MdPerson,
+  MdBusinessCenter,
 } from 'react-icons/md';
 
 // Admin & User View Imports
@@ -20,6 +21,7 @@ import MarketMap from 'views/user/price-view';
 import UserProfile from 'views/user/profile';
 import AdminUserList from 'views/admin/user/index';
 import ForgotPassword from 'views/auth/forgotPassword';
+import CompanyProfileUpload from 'views/admin/companyProfile';
 
 const brandGreen = '#19944D';
 
@@ -39,6 +41,14 @@ const routes = [
     path: '/user',
     icon: <Icon as={MdPerson} width="20px" height="20px" color={brandGreen} />,
     component: <AdminUserList />,
+    roles: ['admin'],
+  },
+  {
+    name: 'Company Profiling',
+    layout: '/admin',
+    path: '/company-profile',
+    icon: <Icon as={MdBusinessCenter} width="20px" height="20px" color={brandGreen} />,
+    component: <CompanyProfileUpload />,
     roles: ['admin'],
   },
   // 2. USER HOME (I-Recs ke upar le aaya)

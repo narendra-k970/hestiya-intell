@@ -2,9 +2,6 @@ const express = require("express");
 const router = express.Router();
 const pricingController = require("../controller/pricingController");
 const pendingController = require("../controller/pendingController");
-const { protect } = require("../middleware/auth");
-
-router.use(protect);
 
 router.post("/upload-market", pricingController.uploadMarketPricing);
 router.get("/get-market", pricingController.getMarketPricing);
