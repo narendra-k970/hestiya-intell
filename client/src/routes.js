@@ -22,7 +22,7 @@ import UserProfile from 'views/user/profile';
 import AdminUserList from 'views/admin/user/index';
 import ForgotPassword from 'views/auth/forgotPassword';
 import CompanyProfileUpload from 'views/admin/companyProfile';
-
+import UserCompanyProfile from 'views/user/companyProfile';
 const brandGreen = '#19944D';
 
 const routes = [
@@ -68,9 +68,17 @@ const routes = [
     component: <UserProfile />,
     roles: ['user'],
   },
+  {
+    name: 'H & M and Hestiya Company Profile',
+    layout: '/user',
+    path: '/company-profile',
+    icon: <Icon as={MdBusinessCenter} width="20px" height="20px" color={brandGreen} />,
+    component: <UserCompanyProfile />,
+    roles: ['user'],
+  },
   // 3. I-RECS (Dropdown Group)
   {
-    name: 'I-REC',
+    name: 'EAC',
     isGroup: true,
     icon: (
       <Icon as={MdUploadFile} width="20px" height="20px" color={brandGreen} />
@@ -101,7 +109,7 @@ const routes = [
         roles: ['user'],
       },
       {
-        name: 'Pricing',
+        name: 'EAC pricing',
         layout: '/user',
         path: '/price-view',
         icon: <Icon as={MdMap} width="20px" height="20px" color={brandGreen} />,
