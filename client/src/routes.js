@@ -68,6 +68,7 @@ const routes = [
     component: <UserProfile />,
     roles: ['user'],
   },
+  /*
   {
     name: 'H & M and Hestiya Company Profile',
     layout: '/user',
@@ -76,6 +77,7 @@ const routes = [
     component: <UserCompanyProfile />,
     roles: ['user'],
   },
+  */
   // 3. I-RECS (Dropdown Group)
   {
     name: 'EAC',
