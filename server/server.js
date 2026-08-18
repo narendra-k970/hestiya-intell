@@ -18,15 +18,9 @@ const app = express();
 // Middleware
 app.use(
   cors({
-    origin: [
-      "http://localhost:3000",
-      "http://localhost:3001",
-      "http://localhost:5173",
-      "https://marketplace.hestiya.com",
-      "https://intelligence.hestiya.com",
-      "https://www.hestiya.com",
-      "https://hestiya.com"
-    ],
+    origin: function (origin, callback) {
+      callback(null, true);
+    },
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     credentials: true,
   }),
