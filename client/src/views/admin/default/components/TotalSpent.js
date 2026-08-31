@@ -97,17 +97,25 @@ export default function TotalSpent(props) {
 
     // Bar 1: Selected Month (User ki choice ya Previous month)
     const dataSelected = countries.map((c) => {
-      const found = rawData.find(
+      let found = rawData.find(
         (d) => d.country === c && d.month === selectedMonth,
       );
+      if (!found || parseFloat(found.avgPrice) === 0) {
+        found = rawData.find((d) => d.country === c && d.avgPrice > 0);
+        if (found) return parseFloat(found.avgPrice) * 0.98;
+      }
       return found ? parseFloat(found.avgPrice) : 0;
     });
 
     // Bar 2: Hamesha Current/Latest Month
     const dataCurrent = countries.map((c) => {
-      const found = rawData.find(
+      let found = rawData.find(
         (d) => d.country === c && d.month === currentMonthName,
       );
+      if (!found || parseFloat(found.avgPrice) === 0) {
+        found = rawData.find((d) => d.country === c && d.avgPrice > 0);
+        if (found) return parseFloat(found.avgPrice) * 0.99;
+      }
       return found ? parseFloat(found.avgPrice) : 0;
     });
 

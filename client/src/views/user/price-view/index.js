@@ -143,9 +143,8 @@ export default function MarketMapLeaflet() {
         let rawMarketData = res.data.data || [];
         
         // --- ADD DUMMY DATA LOGIC START ---
-        const allMonthsList = [
-          'January', 'February', 'March', 'April', 'May', 'June', 'July'
-        ];
+        // Dynamically get all unique months present in the actual database data
+        const allMonthsList = [...new Set(rawMarketData.map(item => item.month))].filter(Boolean);
         
         const monthVariation = {
           'January': 0.02, 'February': -0.01, 'March': 0.03, 'April': -0.02,
@@ -214,7 +213,32 @@ export default function MarketMapLeaflet() {
           });
         });
         
-        const marketData = augmentedMarketData;
+        let finalMarketData = [...augmentedMarketData];
+        // Ensure Non-RE100 exists
+        const countryMonths = {};
+        augmentedMarketData.forEach(item => {
+           countryMonths[`${item.country}-${item.month}-${item.isRE100}`] = true;
+        });
+
+        augmentedMarketData.forEach(item => {
+           const isRe = String(item.isRE100).toLowerCase() === 'yes' || item.isRE100 === true;
+           if (isRe) {
+               const nonReKey1 = `${item.country}-${item.month}-No`;
+               const nonReKey2 = `${item.country}-${item.month}-no`;
+               const nonReKey3 = `${item.country}-${item.month}-false`;
+               if (!countryMonths[nonReKey1] && !countryMonths[nonReKey2] && !countryMonths[nonReKey3]) {
+                   // Mark so we don't duplicate multiple vintages into the same non-RE flag blindly without checking, 
+                   // actually it's fine since we map 1-to-1 with the RE100 item
+                   finalMarketData.push({
+                       ...item,
+                       isRE100: 'No',
+                       avgPrice: Math.max(0.05, item.avgPrice * 0.85) // 15% discount for non-RE100
+                   });
+               }
+           }
+        });
+        
+        const marketData = finalMarketData;
         // --- ADD DUMMY DATA LOGIC END ---
 
         setData(marketData);
