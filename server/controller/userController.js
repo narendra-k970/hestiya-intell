@@ -741,7 +741,6 @@ exports.getMarketNews = async (req, res) => {
       throw new Error(`Google News returned ${response.status}`);
     }
     const xmlText = await response.text();
-    
     res.set('Content-Type', 'application/xml');
     return res.status(200).send(xmlText);
   } catch (error) {
@@ -750,4 +749,38 @@ exports.getMarketNews = async (req, res) => {
   }
 };
 
+// --- BOOKMARK CONTROLLERS ---
+exports.toggleBookmark = async (req, res) => {
+  try {
+    const { country } = req.body;
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ success: false, message: "User not found" });
 
+    if (!user.bookmarkedCountries) {
+      user.bookmarkedCountries = [];
+    }
+
+    const index = user.bookmarkedCountries.indexOf(country);
+    if (index === -1) {
+      user.bookmarkedCountries.push(country);
+    } else {
+      user.bookmarkedCountries.splice(index, 1);
+    }
+
+    await user.save();
+    res.status(200).json({ success: true, bookmarks: user.bookmarkedCountries });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+exports.getBookmarks = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ success: false, message: "User not found" });
+
+    res.status(200).json({ success: true, bookmarks: user.bookmarkedCountries || [] });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};

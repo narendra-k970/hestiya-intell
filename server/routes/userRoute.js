@@ -25,4 +25,7 @@ router.get("/feedback/all", protect, userController.getAllFeedback);
 router.get("/news", protect, userController.getMarketNews);
 router.patch("/deactivate", protect, userController.deactivateAccount);
 
+router.post("/bookmark", protect, userController.toggleBookmark);
+router.get("/bookmarks", protect, userController.getBookmarks);
+
 module.exports = router;

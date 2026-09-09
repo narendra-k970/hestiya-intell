@@ -81,8 +81,10 @@ export default function UserProfile() {
   const cardBg = useColorModeValue('white', '#111C44');
   const modalBg = useColorModeValue('white', 'navy.800');
 
+  const [bookmarkedPrices, setBookmarkedPrices] = useState([]);
+
   useEffect(() => {
-    const fetchProfile = async () => {
+    const fetchProfileAndBookmarks = async () => {
       const token = localStorage.getItem('token');
       if (!token) {
         setError('No active session found. Please login.');
@@ -91,17 +93,65 @@ export default function UserProfile() {
       }
       try {
         setLoading(true);
-        const response = await api.get('/user/profile');
-        if (response.data.success) {
-          setUser(response.data.user);
+        const [profileRes, bookmarksRes, pricingRes] = await Promise.all([
+          api.get('/user/profile'),
+          api.get('/user/bookmarks').catch(() => ({ data: { bookmarks: [] } })),
+          api.get('/pricing/country-avg').catch(() => ({ data: { data: [] } }))
+        ]);
+
+        if (profileRes.data.success) {
+          setUser(profileRes.data.user);
         }
+
+        const userBookmarks = bookmarksRes?.data?.bookmarks || [];
+        const allPrices = pricingRes?.data?.data || [];
+        
+        const getMonthOrder = (month) => {
+          const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+          return months.indexOf(month);
+        };
+
+        const bPrices = userBookmarks.map(country => {
+          // Filter prices for this country (RE100)
+          const countryPrices = allPrices.filter(p => p.country.toLowerCase() === country.toLowerCase() && (p.isRE100 === 'Yes' || p.isRE100 === true));
+          
+          if (countryPrices.length > 0) {
+            // Sort by month (descending) and then by vintage (descending)
+            countryPrices.sort((a, b) => {
+              const monthDiff = getMonthOrder(b.month) - getMonthOrder(a.month);
+              if (monthDiff !== 0) return monthDiff;
+              return parseInt(b.vintage || 0) - parseInt(a.vintage || 0);
+            });
+            
+            // Prefer 2026 if it exists in the latest month
+            const latestMonth = countryPrices[0].month;
+            const pricesInLatestMonth = countryPrices.filter(p => p.month === latestMonth);
+            const priceData = pricesInLatestMonth.find(p => String(p.vintage) === '2026') || pricesInLatestMonth[0];
+
+            return {
+              country,
+              price: priceData.avgPrice || 'N/A',
+              vintage: priceData.vintage || 'N/A',
+              month: priceData.month || 'N/A'
+            };
+          }
+
+          return {
+            country,
+            price: 'N/A',
+            vintage: 'N/A',
+            month: 'N/A'
+          };
+        });
+        setBookmarkedPrices(bPrices);
+
       } catch (err) {
-        setError(err.response?.data?.message || 'Failed to load profile');
+        setError(err.response?.data?.message || 'Failed to load profile data');
       } finally {
         setLoading(false);
       }
     };
-    fetchProfile();
+    fetchProfileAndBookmarks();
   }, []);
 
   // --- Reset Password Handlers ---
@@ -315,7 +365,7 @@ export default function UserProfile() {
       <Divider mb="40px" borderColor={borderColor} />
 
       {/* ── Details Grid ── */}
-      <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacingX={10} spacingY={12}>
+      <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacingX={10} spacingY={12} mb="40px">
         <InfoItem icon={MdPerson} label="Full Name" value={`${user?.firstName} ${user?.lastName}`} />
         <InfoItem icon={MdEmail} label="Registered Email" value={user?.email} />
         <InfoItem icon={MdPhone} label="Contact Number" value={user?.phone || user?.phoneNumber || 'Not Linked'} />
@@ -328,6 +378,35 @@ export default function UserProfile() {
         />
         <InfoItem icon={MdLocationOn} label="Region" value={user?.countryOfIncorporation || 'Global'} />
       </SimpleGrid>
+
+      <Divider mb="40px" borderColor={borderColor} />
+
+      {/* ── Bookmarked Prices Section ── */}
+      <Box mb="40px">
+        <Text fontSize="xl" fontWeight="700" color={textColor} mb={6}>
+          My Bookmarked Prices
+        </Text>
+        {bookmarkedPrices.length === 0 ? (
+          <Text color="gray.500" fontSize="sm">You haven't bookmarked any countries yet.</Text>
+        ) : (
+          <SimpleGrid columns={{ base: 1, md: 3, lg: 4 }} spacing={6}>
+            {bookmarkedPrices.map((item, index) => (
+              <Box key={index} p={5} bg={cardBg} borderRadius="20px" border="1px solid" borderColor={borderColor} boxShadow="sm">
+                <Text fontSize="lg" fontWeight="bold" color="green.400" mb={1}>{item.country}</Text>
+                <Text fontSize="2xl" fontWeight="800" color={textColor}>
+                  {item.price !== 'N/A' ? `$${item.price}` : 'N/A'}
+                </Text>
+                <HStack mt={3} spacing={3} color="gray.500">
+                  <Badge colorScheme="blue" borderRadius="full" px={2} textTransform="capitalize">
+                    {item.month}
+                  </Badge>
+                  <Text fontSize="xs" fontWeight="bold">Vintage: {item.vintage}</Text>
+                </HStack>
+              </Box>
+            ))}
+          </SimpleGrid>
+        )}
+      </Box>
 
       {/* ── Reset Password Modal ── */}
       <Modal isOpen={isOpen} onClose={onClose} isCentered size="md">

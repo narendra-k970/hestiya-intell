@@ -146,7 +146,7 @@ const routes = [
     ),
     roles: ['user', 'admin'],
   },
-
+  
   // --- AUTH ROUTES ---
   {
     name: 'Sign In',

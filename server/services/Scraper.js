@@ -33,87 +33,94 @@ const scrapeEvidentIssuance = async (country = null) => {
       args: ["--no-sandbox", "--disable-setuid-sandbox"],
     });
 
-    for (let i = 0; i < plants.length; i++) {
-      const plant = plants[i];
-      const page = await browser.newPage();
+    const CONCURRENCY = 5;
 
-      await page.setRequestInterception(true);
-      page.on("request", (req) => {
-        if (req.resourceType() === "image" || req.resourceType() === "font")
-          req.abort();
-        else req.continue();
-      });
+    for (let i = 0; i < plants.length; i += CONCURRENCY) {
+      const batch = plants.slice(i, i + CONCURRENCY);
+      
+      const promises = batch.map(async (plant, idx) => {
+        const absoluteIdx = i + idx + 1;
+        const page = await browser.newPage();
 
-      await page.setUserAgent(
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-      );
+        await page.setRequestInterception(true);
+        page.on("request", (req) => {
+          if (req.resourceType() === "image" || req.resourceType() === "font")
+            req.abort();
+          else req.continue();
+        });
 
-      try {
-        console.log(
-          `⏳ [${i + 1}/${plants.length}] Scraping: ${plant.plantCode}`,
+        await page.setUserAgent(
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
         );
 
-        await page.goto(
-          `https://evident.app/IREC/device-register/${plant.plantCode}`,
-          { waitUntil: "networkidle2", timeout: 70000 }, // Timeout thoda badha diya
-        );
+        try {
+          console.log(
+            `⏳ [${absoluteIdx}/${plants.length}] Scraping: ${plant.plantCode}`,
+          );
 
-        // Slow loading pages ke liye timeout 15s se 30s kiya
-        await page
-          .waitForFunction(() => document.querySelectorAll("td").length > 0, {
-            timeout: 30000,
-          })
-          .catch(() => {
-            console.log(`⚠️ ${plant.plantCode}: Table didn't appear in 30s`);
-          });
+          await page.goto(
+            `https://evident.app/IREC/device-register/${plant.plantCode}`,
+            { waitUntil: "networkidle2", timeout: 70000 },
+          );
 
-        // Delay 3s se 6s kiya taaki dynamic data miss na ho
-        await delay(6000);
+          await page
+            .waitForFunction(() => document.querySelectorAll("td").length > 0, {
+              timeout: 30000,
+            })
+            .catch(() => {
+              console.log(`⚠️ ${plant.plantCode}: Table didn't appear in 30s`);
+            });
 
-        const allIssuances = await page.evaluate(() => {
-          const rows = Array.from(document.querySelectorAll("tr"));
-          const data = [];
-          rows.forEach((row) => {
-            const cells = row.querySelectorAll("td");
-            if (cells.length >= 2) {
-              const yearStr = cells[0].innerText.trim();
-              const volRaw = cells[1].innerText.trim();
-              if (/^\d{4}$/.test(yearStr)) {
-                const volClean = volRaw
-                  .replace(/,/g, "")
-                  .replace(/[^\d.]/g, "");
-                const vol = parseFloat(volClean);
-                const year = parseInt(yearStr);
-                if (!isNaN(year) && !isNaN(vol)) {
-                  data.push({ issuingYear: year, issuanceVolume: vol });
+          await delay(6000);
+
+          const allIssuances = await page.evaluate(() => {
+            const rows = Array.from(document.querySelectorAll("tr"));
+            const data = [];
+            rows.forEach((row) => {
+              const cells = row.querySelectorAll("td");
+              if (cells.length >= 2) {
+                const yearStr = cells[0].innerText.trim();
+                const volRaw = cells[1].innerText.trim();
+                if (/^\d{4}$/.test(yearStr)) {
+                  const volClean = volRaw
+                    .replace(/,/g, "")
+                    .replace(/[^\d.]/g, "");
+                  const vol = parseFloat(volClean);
+                  const year = parseInt(yearStr);
+                  if (!isNaN(year) && !isNaN(vol)) {
+                    data.push({ issuingYear: year, issuanceVolume: vol });
+                  }
                 }
               }
-            }
+            });
+            return data;
           });
-          return data;
-        });
 
-        await Irec.findByIdAndUpdate(plant._id, {
-          $set: {
-            issuances: allIssuances || [],
-            lastSyncAt: new Date(),
-          },
-        });
+          await Irec.findByIdAndUpdate(plant._id, {
+            $set: {
+              issuances: allIssuances || [],
+              lastSyncAt: new Date(),
+            },
+          });
 
-        if (allIssuances && allIssuances.length > 0) {
-          console.log(
-            `✅ ${plant.plantCode}: Saved ${allIssuances.length} records.`,
-          );
-        } else {
-          console.log(`ℹ️ ${plant.plantCode}: No data on portal.`);
+          if (allIssuances && allIssuances.length > 0) {
+            console.log(
+              `✅ ${plant.plantCode}: Saved ${allIssuances.length} records.`,
+            );
+          } else {
+            console.log(`ℹ️ ${plant.plantCode}: No data on portal.`);
+          }
+        } catch (e) {
+          console.log(`❌ Error ${plant.plantCode}: ${e.message}`);
+        } finally {
+          await page.close();
         }
-      } catch (e) {
-        console.log(`❌ Error ${plant.plantCode}: ${e.message}`);
-      } finally {
-        await page.close();
-      }
+      });
 
-      if (i > 0 && i % 40 === 0) {
+      await Promise.all(promises);
+
+      // Periodically restart browser to prevent memory bloat
+      if (i > 0 && i % 50 === 0) {
         await browser.close();
         browser = await puppeteer.launch({
           headless: "new",

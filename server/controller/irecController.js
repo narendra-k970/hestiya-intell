@@ -210,6 +210,30 @@ exports.syncEvidentData = async (req, res) => {
   }
 };
 
+exports.resetForNewYear = async (req, res) => {
+  try {
+    const { country, year } = req.query;
+    if (!country) {
+      return res.status(400).json({ success: false, message: "Country required" });
+    }
+    const targetYear = parseInt(year) || new Date().getFullYear();
+
+    const query = {
+      country: { $regex: new RegExp(`^${country}$`, "i") },
+      "issuances.issuingYear": { $ne: targetYear }
+    };
+
+    const result = await Irec.updateMany(query, { $unset: { lastSyncAt: "" } });
+
+    res.status(200).json({
+      success: true,
+      message: `${result.modifiedCount} plants reset successfully for year ${targetYear}.`
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 exports.fixSyncData = async (req, res) => {
   try {
     const result = await Irec.updateMany(

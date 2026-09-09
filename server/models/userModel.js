@@ -71,6 +71,7 @@ const userSchema = new mongoose.Schema(
       default: "pending",
     },
     refreshToken: { type: String, default: null },
+    bookmarkedCountries: [{ type: String }],
   },
   {
     timestamps: true,

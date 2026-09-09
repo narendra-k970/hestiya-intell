@@ -130,16 +130,25 @@ export default function MarketMapLeaflet() {
     month: 'long',
   }).format(new Date());
   const [selectedMonth, setSelectedMonth] = useState();
+  const [bookmarkedCountries, setBookmarkedCountries] = useState([]);
+  const [isBookmarking, setIsBookmarking] = useState(false);
+  const { useToast } = require('@chakra-ui/react');
+  const toast = useToast();
 
   useEffect(() => {
     const fetchAllData = async () => {
       try {
-        const [res, geoRes] = await Promise.all([
+        const [res, geoRes, bookmarkRes] = await Promise.all([
           api.get('/pricing/country-avg'),
           axios.get(
             'https://raw.githubusercontent.com/johan/world.geo.json/master/countries.geo.json',
           ),
+          api.get('/user/bookmarks').catch(() => ({ data: { bookmarks: [] } })),
         ]);
+        
+        if (bookmarkRes && bookmarkRes.data && bookmarkRes.data.bookmarks) {
+          setBookmarkedCountries(bookmarkRes.data.bookmarks);
+        }
         let rawMarketData = res.data.data || [];
         
         // --- ADD DUMMY DATA LOGIC START ---
@@ -627,13 +636,39 @@ export default function MarketMapLeaflet() {
                   <Text fontSize="xs" color="gray.500">
                     Region
                   </Text>
-                  <Text
-                    fontSize={{ base: '2xl', md: '4xl' }}
-                    color="green.400"
-                    fontWeight="800"
-                  >
-                    {selectedCountry}
-                  </Text>
+                  <HStack justify="space-between" align="center">
+                    <Text
+                      fontSize={{ base: '2xl', md: '4xl' }}
+                      color="green.400"
+                      fontWeight="800"
+                    >
+                      {selectedCountry}
+                    </Text>
+                    <Icon
+                      as={bookmarkedCountries.includes(selectedCountry) ? require('react-icons/md').MdBookmark : require('react-icons/md').MdBookmarkBorder}
+                      boxSize={8}
+                      color={bookmarkedCountries.includes(selectedCountry) ? "yellow.400" : "gray.400"}
+                      cursor="pointer"
+                      onClick={async () => {
+                        setIsBookmarking(true);
+                        try {
+                          const res = await api.post('/user/bookmark', { country: selectedCountry });
+                          if (res.data.success) {
+                            setBookmarkedCountries(res.data.bookmarks);
+                            toast({
+                              title: res.data.bookmarks.includes(selectedCountry) ? "Bookmarked!" : "Removed from bookmarks",
+                              status: 'success',
+                              duration: 2000,
+                              position: 'top-right'
+                            });
+                          }
+                        } catch (err) {
+                          toast({ title: "Failed to bookmark", status: 'error' });
+                        }
+                        setIsBookmarking(false);
+                      }}
+                    />
+                  </HStack>
                 </Box>
 
                 <Divider />

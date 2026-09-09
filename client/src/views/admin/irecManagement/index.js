@@ -192,6 +192,39 @@ export default function IrecManagement() {
     }
   };
 
+  // --- STEP 3: FETCH NEW DATA (SMART SYNC) ---
+  const handleFetchNewData = async () => {
+    setIsProcessing(true);
+    try {
+      const resetRes = await api.get(
+        `/irec/reset-new-year?country=${selectedCountry}&year=2026`
+      );
+      if (resetRes.data.success) {
+        toast({
+          title: 'Smart Reset Success',
+          description: resetRes.data.message,
+          status: 'info',
+        });
+        await fetchPlants(); // Refresh count
+        
+        const syncRes = await api.get(
+          `/irec/sync-evident?country=${selectedCountry}`
+        );
+        if (syncRes.data.success) {
+          toast({
+            title: 'Sync Started Automatically',
+            description: `Fetching missing 2026 data for ${selectedCountry}...`,
+            status: 'success',
+          });
+        }
+      }
+    } catch (error) {
+      toast({ title: 'Error Fetching New Data', status: 'error' });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   return (
     <Box pt="80px" px="20px">
       <SimpleGrid columns={{ base: 1, md: 2 }} spacing="20px">
@@ -304,6 +337,15 @@ export default function IrecManagement() {
               isDisabled={pendingInDB === 0}
             >
               Sync {selectedCountry} Now
+            </Button>
+            <Button
+              leftIcon={<MdSync />}
+              colorScheme="blue"
+              h="14"
+              isLoading={isProcessing}
+              onClick={handleFetchNewData}
+            >
+              Fetch New Data
             </Button>
           </VStack>
         </Box>
