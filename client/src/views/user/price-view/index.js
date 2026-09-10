@@ -456,6 +456,11 @@ export default function MarketMapLeaflet() {
               </Radio>
             </Stack>
           </RadioGroup>
+          <Text fontSize="sm" color="gray.500" mt="15px" fontStyle="italic" lineHeight="1.6" maxW="800px">
+            {selectedCert === 'Evident' && 'I-RECs (International Renewable Energy Certificates) are globally recognized energy attribute certificates used outside North America and Europe. They allow organizations to credibly track and prove their consumption of renewable electricity to reduce Scope 2 carbon emissions.'}
+            {selectedCert === 'NEA' && 'GEC (Green Electricity Certificates) are the official energy tracking instruments used in China. They certify renewable energy generation and are widely utilized by companies operating in the Chinese market to meet both local compliance and voluntary sustainability targets.'}
+            {selectedCert === 'AIB' && 'GOs (Guarantees of Origin) are the standard energy tracking instruments established within the European Union. They provide an official guarantee to consumers that a specific share of their electricity was generated from renewable sources within the European grid.'}
+          </Text>
         </Box>
 
         <Flex

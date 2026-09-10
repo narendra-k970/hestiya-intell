@@ -27,6 +27,9 @@ import logo from 'assets/img/final-logo.webp';
 import carbonBG from 'assets/img/carbon_market_bg.png';
 
 const AuthForm = () => {
+  React.useEffect(() => {
+    document.title = "Hestiya Intelligence | Sign Up";
+  }, []);
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const toast = useToast();
@@ -171,11 +174,14 @@ const AuthForm = () => {
         backdropFilter="blur(1px)"
       />
       <Container maxW="container.sm" py={4} position="relative" zIndex={1}>
-        <VStack spacing={2} mb={3}>
+        <VStack spacing={2} mb={4} textAlign="center">
           <Image src={logo} alt="Hestiya Logo" maxW="70px" />
-          <Heading size="md" color={useColorModeValue('white', 'white')}>
-            Create Your Account
+          <Heading size="md" color="white">
+            Hestiya Intelligence | Sign Up
           </Heading>
+          <Text color="whiteAlpha.900" fontSize="sm" px={4}>
+            Sign up for I-REC market intelligence, pricing, project data and insights to make smarter renewable energy procurement decisions with Hestiya.
+          </Text>
         </VStack>
 
         <Box

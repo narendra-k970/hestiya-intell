@@ -165,7 +165,7 @@ export default function TotalSpent(props) {
 
   if (loading)
     return (
-      <Flex justify="center" align="center" h="400px">
+      <Flex justify="center" align="center" h="220px">
         <Spinner color={SOFT_GREEN} size="xl" />
       </Flex>
     );
@@ -216,7 +216,7 @@ export default function TotalSpent(props) {
       <Box w="100%" overflowX="auto" pb="20px">
         <Box
           minW={countriesCount > 4 ? `${countriesCount * 160}px` : '100%'}
-          h="350px"
+          h="220px"
         >
           <BarChart
             key={`${selectedMonth}-${currentMonthName}-${rawData.length}`}

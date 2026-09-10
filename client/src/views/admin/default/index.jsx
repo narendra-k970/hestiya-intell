@@ -10,6 +10,10 @@ import {
   Spinner,
   Text,
   Progress,
+  VStack,
+  HStack,
+  Divider,
+  Badge,
 } from '@chakra-ui/react';
 import {
   MdAttachMoney,
@@ -20,6 +24,8 @@ import {
 
 import MiniStatistics from 'components/card/MiniStatistics';
 import IconBox from 'components/icons/IconBox';
+import Card from 'components/card/Card';
+import LineAreaChart from 'components/charts/LineAreaChart';
 import TotalSpent from 'views/admin/default/components/TotalSpent';
 import WeeklyRevenue from 'views/admin/default/components/WeeklyRevenue';
 import UserFeedbackFeed from 'views/admin/default/components/UserFeedbackFeed';
@@ -31,6 +37,131 @@ const scrollAnim = keyframes`
   0% { transform: translateX(0); }
   100% { transform: translateX(-50%); }
 `;
+
+// --- NEW WIDGETS ---
+const RecentlyCommissioned = ({ data }) => {
+  const brandGreen = '#19944D';
+  const textColor = useColorModeValue('secondaryGray.900', 'white');
+  const bg = useColorModeValue('white', 'navy.800');
+  const cardBg = useColorModeValue('gray.50', 'whiteAlpha.100');
+
+  const recent = useMemo(() => {
+    return [...data]
+      .filter((p) => {
+        let year = 0;
+        if (p.commYear) {
+          const m = String(p.commYear).match(/\d{4}/);
+          if (m) year = parseInt(m[0]);
+        }
+        if (year === 0 && p.commissioningDate) {
+          const m = String(p.commissioningDate).match(/\d{4}/);
+          if (m) year = parseInt(m[0]);
+        }
+        return year > 0;
+      })
+      .sort((a, b) => {
+        let yA = parseInt(String(a.commYear || a.commissioningDate).match(/\d{4}/)?.[0] || 0);
+        let yB = parseInt(String(b.commYear || b.commissioningDate).match(/\d{4}/)?.[0] || 0);
+        return yB - yA;
+      })
+      .slice(0, 10);
+  }, [data]);
+
+  return (
+    <Card bg={bg} p="15px" borderRadius="20px" h="100%">
+      <Text fontWeight="800" mb="3" fontSize="md" color={brandGreen}>
+        Recently Commissioned Assets
+      </Text>
+      <Box
+        h="250px"
+        w="100%"
+        overflowY="auto"
+        pr="5px"
+        css={{
+          '&::-webkit-scrollbar': { width: '4px' },
+          '&::-webkit-scrollbar-thumb': {
+            background: brandGreen,
+            borderRadius: '10px',
+          },
+        }}
+      >
+        <VStack align="stretch" spacing={3}>
+          {recent.map((p, i) => {
+             let y = String(p.commYear || p.commissioningDate).match(/\d{4}/)?.[0];
+             return (
+               <Box key={i} p="2" bg={cardBg} borderRadius="8px">
+                 <Text fontSize="xs" fontWeight="bold" color={textColor} noOfLines={1}>{p.company}</Text>
+                 <HStack justify="space-between" mt="1">
+                   <Text fontSize="xs" color="gray.500">{p.country} • {p.technology}</Text>
+                   <Badge colorScheme="green">{y}</Badge>
+                 </HStack>
+               </Box>
+             );
+          })}
+          {recent.length === 0 && <Text fontSize="xs" color="gray.500">Loading data...</Text>}
+        </VStack>
+      </Box>
+    </Card>
+  );
+};
+
+const YearlyTrendChart = ({ data }) => {
+  const brandGreen = '#19944D';
+  const textColor = useColorModeValue('gray.400', 'whiteAlpha.600');
+  const bg = useColorModeValue('white', 'navy.800');
+
+  const { chartData, chartOptions } = useMemo(() => {
+    const yearMap = {};
+    data.forEach(p => {
+      if (p.issuances) {
+        p.issuances.forEach(iss => {
+          const y = iss.issuingYear || iss.year;
+          if (y && y >= 2015) {
+            yearMap[y] = (yearMap[y] || 0) + (parseFloat(iss.issuanceVolume) || 0);
+          }
+        });
+      }
+    });
+
+    const years = Object.keys(yearMap).sort();
+    const volumes = years.map(y => Math.round(yearMap[y]));
+
+    const chartData = [{ name: 'Issuance Volume (MWh)', data: volumes }];
+    const chartOptions = {
+      chart: { type: 'area', toolbar: { show: false } },
+      colors: [brandGreen],
+      dataLabels: { enabled: false },
+      stroke: { curve: 'smooth', width: 2 },
+      xaxis: {
+        categories: years,
+        labels: { style: { colors: textColor, fontSize: '10px' } },
+        axisBorder: { show: false },
+        axisTicks: { show: false },
+      },
+      yaxis: { show: false },
+      grid: { show: false },
+      tooltip: { theme: 'light' },
+    };
+    return { chartData, chartOptions };
+  }, [data, brandGreen, textColor]);
+
+  return (
+    <Card bg={bg} p="15px" borderRadius="20px" h="100%">
+      <Text fontWeight="800" mb="3" fontSize="md" color={brandGreen}>
+        Yearly Issuance Trend
+      </Text>
+      <Box h="250px" w="100%">
+        {chartData[0].data.length > 0 ? (
+          <LineAreaChart chartData={chartData} chartOptions={chartOptions} />
+        ) : (
+          <Flex h="100%" align="center" justify="center">
+            <Text fontSize="xs" color="gray.500">Loading data...</Text>
+          </Flex>
+        )}
+      </Box>
+    </Card>
+  );
+};
 
 export default function UserReports() {
   // --- 1. HOOKS ---
@@ -265,6 +396,12 @@ export default function UserReports() {
       <SimpleGrid columns={{ base: 1, md: 2 }} gap="20px" mb="20px">
         <TotalSpent />
         <WeeklyRevenue />
+      </SimpleGrid>
+
+      {/* Row 2: Analytics Widgets */}
+      <SimpleGrid columns={{ base: 1, md: 2 }} gap="20px" mb="20px">
+        <YearlyTrendChart data={allPlants} />
+        <RecentlyCommissioned data={allPlants} />
       </SimpleGrid>
     </Box>
   );

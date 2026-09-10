@@ -107,7 +107,7 @@ export default function MarketNewsFeed(props) {
 
       <Box
         w="100%"
-        h="450px"
+        h="320px"
         overflowY="auto"
         pr="5px"
         css={{
