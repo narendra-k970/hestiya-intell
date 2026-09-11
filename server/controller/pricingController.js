@@ -18,16 +18,17 @@ exports.uploadMarketPricing = async (req, res) => {
     rawData.forEach(item => {
       const month = item.Month;
       const cert = item.Certification || item.Certificate || "Evident";
-      if (month) {
-        const key = `${month}_${cert}`;
+      const country = item.Country;
+      if (month && country) {
+        const key = `${month}_${cert}_${country}`;
         if (!combinationsToDelete.find(c => c.key === key)) {
-          combinationsToDelete.push({ key, Month: month, Certification: cert });
+          combinationsToDelete.push({ key, Month: month, Certification: cert, Country: country });
         }
       }
     });
 
     for (const combo of combinationsToDelete) {
-      await Pricing.deleteMany({ Month: combo.Month, Certification: combo.Certification });
+      await Pricing.deleteMany({ Month: combo.Month, Certification: combo.Certification, Country: combo.Country });
     }
 
     // 3. Data Mapping - 'Type' ko 'Technology' mein map karna
@@ -37,7 +38,7 @@ exports.uploadMarketPricing = async (req, res) => {
       Vintage: String(item.Vintage || item.vintage || item["Vintage "] || item.Year || "Unknown"),
       Technology: item.Technology || item["Type "] || item.Type || "N/A",
       Rate: Number(item.Rate || 0),
-      isRE100: item.isRE100 || "No",
+      isRE100: item.Registry || item.isRE100 || "No",
       Certification: item.Certification || item.Certificate || "Evident",
       addedBy: req.user ? req.user._id : null,
     }));

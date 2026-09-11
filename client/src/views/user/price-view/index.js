@@ -499,8 +499,17 @@ export default function MarketMapLeaflet() {
               border="2px solid"
             >
               <option value="All">All Types</option>
-              <option value="Yes">RE100 Only</option>
-              <option value="No">Non-RE Only</option>
+              {selectedCountry?.toUpperCase() === 'USA' || selectedCountry?.toUpperCase() === 'UNITED STATES' ? (
+                <>
+                  <option value="WREGIS">WREGIS</option>
+                  <option value="ERCOT">ERCOT</option>
+                </>
+              ) : (
+                <>
+                  <option value="Yes">RE100 Only</option>
+                  <option value="No">Non-RE Only</option>
+                </>
+              )}
             </Select>
 
             <Select
@@ -571,9 +580,11 @@ export default function MarketMapLeaflet() {
                     ).toLowerCase();
                     const selName = selectedCountry.toLowerCase().trim();
 
-                    // Improved Matching Logic
                     const isMatch =
                       geoName === selName ||
+                      (f.id || '').toLowerCase() === selName ||
+                      (selName === 'usa' &&
+                        (geoName.includes('united states') || f.id === 'USA')) ||
                       (selName === 'sri lanka' &&
                         (geoName.includes('sri lanka') || f.id === 'LKA')) ||
                       (selName === 'uae' &&
@@ -624,9 +635,11 @@ export default function MarketMapLeaflet() {
                   >
                     {reFilter === 'All'
                       ? 'Live Market'
-                      : reFilter === 'Yes'
-                        ? 'RE100 Certified'
-                        : 'Non-RE Market'}
+                      : (selectedCountry?.toUpperCase() === 'USA' || selectedCountry?.toUpperCase() === 'UNITED STATES')
+                        ? reFilter
+                        : reFilter === 'Yes'
+                          ? 'RE100 Certified'
+                          : 'Non-RE Market'}
                   </Badge>
 
                   <HStack spacing={1} color="gray.500">

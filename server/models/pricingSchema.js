@@ -7,7 +7,7 @@ const PricingSchema = new mongoose.Schema(
     Vintage: { type: String, required: true },
     Technology: { type: String },
     Rate: { type: Number, required: true },
-    isRE100: { type: String, enum: ["Yes", "No"], default: "No" },
+    isRE100: { type: String, default: "No" },
     Certification: { type: String, default: "Evident" },
     addedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
   },
