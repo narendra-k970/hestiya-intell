@@ -68,16 +68,15 @@ const routes = [
     component: <UserProfile />,
     roles: ['user'],
   },
-  /*
   {
     name: 'H & M and Hestiya Company Profile',
     layout: '/user',
     path: '/company-profile',
     icon: <Icon as={MdBusinessCenter} width="20px" height="20px" color={brandGreen} />,
     component: <UserCompanyProfile />,
-    roles: ['user'],
+    roles: ['user', 'admin'],
+    requiredEmail: 'support@hestiya.com',
   },
-  */
   // 3. I-RECS (Dropdown Group)
   {
     name: 'EAC',

@@ -65,6 +65,12 @@ export default function Dashboard(props) {
             !item.roles.map((r) => r.toLowerCase()).includes(userRole)
           )
             return;
+            
+          if (
+            item.requiredEmail &&
+            item.requiredEmail.toLowerCase() !== (user?.email || '').toLowerCase()
+          )
+            return;
 
           allRoutes.push(
             <Route
@@ -80,6 +86,12 @@ export default function Dashboard(props) {
         if (
           route.roles &&
           !route.roles.map((r) => r.toLowerCase()).includes(userRole)
+        )
+          return;
+          
+        if (
+          route.requiredEmail &&
+          route.requiredEmail.toLowerCase() !== (user?.email || '').toLowerCase()
         )
           return;
 

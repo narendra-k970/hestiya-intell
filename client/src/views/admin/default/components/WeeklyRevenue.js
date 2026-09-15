@@ -24,6 +24,15 @@ import React, { useEffect, useState } from 'react';
 import api from '../../../../utils/axiosConfig';
 import { MdOutlineNewspaper, MdAccessTime, MdLaunch } from 'react-icons/md';
 
+const defaultImages = [
+  'https://images.unsplash.com/photo-1473341304170-971dccb5ac1e?w=500',
+  'https://images.unsplash.com/photo-1497436072909-60f360e1d4b1?w=500',
+  'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=500',
+  'https://images.unsplash.com/photo-1466611653911-95081537e5b7?w=500',
+  'https://images.unsplash.com/photo-1509391366360-2e959784a276?w=500',
+  'https://images.unsplash.com/photo-1532601224476-15c79f2f7a51?w=500',
+];
+
 export default function MarketNewsFeed(props) {
   const { ...rest } = props;
   const [news, setNews] = useState([]);
@@ -45,21 +54,35 @@ export default function MarketNewsFeed(props) {
         if (res.data) {
           const parser = new DOMParser();
           const xmlDoc = parser.parseFromString(res.data, 'text/xml');
-          const items = Array.from(xmlDoc.querySelectorAll('item')).map((item) => {
-            const desc = item.querySelector('description')?.textContent;
-            const content = item.getElementsByTagName('content:encoded')[0]?.textContent;
+          const items = Array.from(xmlDoc.querySelectorAll('item')).map((item, index) => {
+            const descHtml = item.querySelector('description')?.textContent || '';
+            const contentHtml = item.getElementsByTagName('content:encoded')[0]?.textContent || '';
             const author = item.querySelector('author')?.textContent || item.getElementsByTagName('dc:creator')[0]?.textContent;
             
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = contentHtml || descHtml;
+            const cleanText = tempDiv.textContent || tempDiv.innerText || '';
+
             let thumbnail = item.querySelector('enclosure')?.getAttribute('url');
             if (!thumbnail) thumbnail = item.getElementsByTagName('media:content')[0]?.getAttribute('url');
             if (!thumbnail) thumbnail = item.getElementsByTagName('media:thumbnail')[0]?.getAttribute('url');
+            
+            if (!thumbnail && descHtml) {
+              const imgMatch = descHtml.match(/<img[^>]+src="([^">]+)"/);
+              if (imgMatch) {
+                thumbnail = imgMatch[1];
+              }
+            }
+
+            if (!thumbnail) {
+              thumbnail = defaultImages[index % defaultImages.length];
+            }
 
             return {
               title: item.querySelector('title')?.textContent,
               link: item.querySelector('link')?.textContent,
               pubDate: item.querySelector('pubDate')?.textContent,
-              description: desc,
-              content: content,
+              cleanText: cleanText,
               author: author,
               thumbnail: thumbnail,
             };
@@ -211,10 +234,7 @@ export default function MarketNewsFeed(props) {
               <Divider />
 
               <Text color={textColor} fontSize="md" lineHeight="1.6">
-                {/* HTML tags hata kar clean text dikhane ke liye */}
-                {selectedArticle?.content?.replace(/<[^>]*>?/gm, '') ||
-                  selectedArticle?.description?.replace(/<[^>]*>?/gm, '') ||
-                  'Fetching details...'}
+                {selectedArticle?.cleanText || 'Fetching details...'}
               </Text>
 
               <Box

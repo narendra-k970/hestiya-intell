@@ -342,6 +342,7 @@ exports.login = async (req, res) => {
       refreshToken,
       user: {
         id: user._id,
+        email: user.email,
         firstName: user.firstName,
         role: user.role || "user",
       },
@@ -519,9 +520,8 @@ exports.approveUser = async (req, res) => {
         .json({ success: false, message: "User not found" });
     }
 
-    // Send Approval Email
-    try {
-      await transporter.sendMail({
+      // Send Approval Email
+      transporter.sendMail({
         from: '"Hestiya Intelligence" <support@hestiya.com>',
         to: user.email,
         subject: "Account Approved - Hestiya Intelligence",
@@ -546,41 +546,39 @@ exports.approveUser = async (req, res) => {
             </div>
           </div>
         `,
+      }).catch(mailErr => {
+        console.error("Approval Email Failed:", mailErr);
       });
-    } catch (mailErr) {
-      console.error("Approval Email Failed:", mailErr);
+
+      res.json({
+        success: true,
+        message: "User approved successfully",
+        user,
+      });
+    } catch (err) {
+      console.error("Error approving user:", err.message);
+      res.status(500).json({ success: false, message: "Internal Server Error" });
     }
+  };
 
-    res.json({
-      success: true,
-      message: "User approved successfully",
-      user,
-    });
-  } catch (err) {
-    console.error("Error approving user:", err.message);
-    res.status(500).json({ success: false, message: "Internal Server Error" });
-  }
-};
-
-// --- 10. REJECT USER (Admin Only) ---
-exports.rejectUser = async (req, res) => {
-  try {
-    const { userId } = req.params;
-    const user = await User.findByIdAndUpdate(
-      userId,
-      { approvalStatus: "rejected" },
-      { new: true },
-    );
-
-    if (!user) {
-      return res
-        .status(404)
-        .json({ success: false, message: "User not found" });
-    }
-
-    // Send Rejection Email
+  // --- 10. REJECT USER (Admin Only) ---
+  exports.rejectUser = async (req, res) => {
     try {
-      await transporter.sendMail({
+      const { userId } = req.params;
+      const user = await User.findByIdAndUpdate(
+        userId,
+        { approvalStatus: "rejected" },
+        { new: true },
+      );
+
+      if (!user) {
+        return res
+          .status(404)
+          .json({ success: false, message: "User not found" });
+      }
+
+      // Send Rejection Email
+      transporter.sendMail({
         from: '"Hestiya Intelligence" <support@hestiya.com>',
         to: user.email,
         subject: "Update on your Hestiya Account Application",
@@ -607,16 +605,15 @@ exports.rejectUser = async (req, res) => {
             </div>
           </div>
         `,
+      }).catch(mailErr => {
+        console.error("Rejection Email Failed:", mailErr);
       });
-    } catch (mailErr) {
-      console.error("Rejection Email Failed:", mailErr);
-    }
 
-    res.json({
-      success: true,
-      message: "User rejected successfully",
-      user,
-    });
+      res.json({
+        success: true,
+        message: "User rejected successfully",
+        user,
+      });
   } catch (err) {
     console.error("Error rejecting user:", err.message);
     res.status(500).json({ success: false, message: "Internal Server Error" });

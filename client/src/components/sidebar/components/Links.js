@@ -76,7 +76,14 @@ export function SidebarLinks(props) {
       const isRoleAllowed = route.roles
         ? route.roles.map((r) => r.toLowerCase()).includes(userRole)
         : true;
-      if (!isRoleAllowed) return null;
+        
+      const parsedUser = userData ? JSON.parse(userData) : null;
+      const userEmail = parsedUser?.email || '';
+      const isEmailAllowed = route.requiredEmail
+        ? route.requiredEmail.toLowerCase() === userEmail.toLowerCase()
+        : true;
+
+      if (!isRoleAllowed || !isEmailAllowed) return null;
 
       // CASE 1: AGAR GROUP HAI (I-Recs)
       if (route.isGroup) {
