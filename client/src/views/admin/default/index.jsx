@@ -46,25 +46,41 @@ const RecentlyCommissioned = ({ data }) => {
   const cardBg = useColorModeValue('gray.50', 'whiteAlpha.100');
 
   const recent = useMemo(() => {
-    return [...data]
-      .filter((p) => {
-        let year = 0;
-        if (p.commYear) {
-          const m = String(p.commYear).match(/\d{4}/);
-          if (m) year = parseInt(m[0]);
-        }
-        if (year === 0 && p.commissioningDate) {
-          const m = String(p.commissioningDate).match(/\d{4}/);
-          if (m) year = parseInt(m[0]);
-        }
-        return year > 0;
-      })
-      .sort((a, b) => {
-        let yA = parseInt(String(a.commYear || a.commissioningDate).match(/\d{4}/)?.[0] || 0);
-        let yB = parseInt(String(b.commYear || b.commissioningDate).match(/\d{4}/)?.[0] || 0);
-        return yB - yA;
-      })
-      .slice(0, 10);
+    // 1. Filter valid plants with a year
+    const validPlants = [...data].filter((p) => {
+      let year = 0;
+      if (p.commYear) {
+        const m = String(p.commYear).match(/\d{4}/);
+        if (m) year = parseInt(m[0]);
+      }
+      if (year === 0 && p.commissioningDate) {
+        const m = String(p.commissioningDate).match(/\d{4}/);
+        if (m) year = parseInt(m[0]);
+      }
+      return year > 0;
+    });
+
+    // 2. Sort by year descending
+    validPlants.sort((a, b) => {
+      let yA = parseInt(String(a.commYear || a.commissioningDate).match(/\d{4}/)?.[0] || 0);
+      let yB = parseInt(String(b.commYear || b.commissioningDate).match(/\d{4}/)?.[0] || 0);
+      return yB - yA;
+    });
+
+    // 3. Deduplicate by country to show variety
+    const seenCountries = new Set();
+    const uniqueRecent = [];
+    
+    for (const p of validPlants) {
+      const country = p.country ? p.country.trim().toLowerCase() : 'unknown';
+      if (!seenCountries.has(country)) {
+        seenCountries.add(country);
+        uniqueRecent.push(p);
+      }
+      if (uniqueRecent.length >= 10) break;
+    }
+
+    return uniqueRecent;
   }, [data]);
 
   return (

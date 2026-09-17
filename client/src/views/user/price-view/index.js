@@ -231,7 +231,7 @@ export default function MarketMapLeaflet() {
 
         augmentedMarketData.forEach(item => {
            const isRe = String(item.isRE100).toLowerCase() === 'yes' || item.isRE100 === true;
-           if (isRe) {
+           if (isRe && item.country?.toUpperCase() !== 'CHINA') {
                const nonReKey1 = `${item.country}-${item.month}-No`;
                const nonReKey2 = `${item.country}-${item.month}-no`;
                const nonReKey3 = `${item.country}-${item.month}-false`;
@@ -304,6 +304,13 @@ export default function MarketMapLeaflet() {
       setSelectedCountry(availableCountries[0]);
     }
   }, [availableCountries, selectedCountry]);
+
+  useEffect(() => {
+    if (selectedCountry?.toUpperCase() === 'CHINA') {
+      setReFilter('Yes');
+    }
+  }, [selectedCountry]);
+
   const allCerts = useMemo(
     () => [...new Set(data.map((item) => item.certification || 'Evident'))].filter(Boolean).sort(),
     [data]
@@ -498,19 +505,25 @@ export default function MarketMapLeaflet() {
               borderColor="green.400"
               border="2px solid"
             >
-              <option value="All">All Types</option>
-              {selectedCountry?.toUpperCase() === 'USA' || selectedCountry?.toUpperCase() === 'UNITED STATES' ? (
-                <>
-                  <option value="WREGIS">WREGIS</option>
-                  <option value="ERCOT">ERCOT</option>
-                </>
-              ) : (
-                <>
-                  <option value="Yes">RE100 Only</option>
-                  <option value="No">Non-RE Only</option>
-                </>
-              )}
-            </Select>
+                {selectedCountry?.toUpperCase() !== 'CHINA' && (
+                  <option value="All">All Types</option>
+                )}
+                {selectedCountry?.toUpperCase() === 'USA' || selectedCountry?.toUpperCase() === 'UNITED STATES' ? (
+                  <>
+                    <option value="WREGIS">WREGIS</option>
+                    <option value="ERCOT">ERCOT</option>
+                  </>
+                ) : selectedCountry?.toUpperCase() === 'CHINA' ? (
+                  <>
+                    <option value="Yes">GEC (RE100)</option>
+                  </>
+                ) : (
+                  <>
+                    <option value="Yes">RE100 Only</option>
+                    <option value="No">Non-RE Only</option>
+                  </>
+                )}
+              </Select>
 
             <Select
               size="sm"
@@ -633,13 +646,13 @@ export default function MarketMapLeaflet() {
                     borderRadius="full"
                     fontSize="2xs"
                   >
-                    {reFilter === 'All'
-                      ? 'Live Market'
-                      : (selectedCountry?.toUpperCase() === 'USA' || selectedCountry?.toUpperCase() === 'UNITED STATES')
-                        ? reFilter
-                        : reFilter === 'Yes'
-                          ? 'RE100 Certified'
-                          : 'Non-RE Market'}
+                      {reFilter === 'All'
+                        ? 'Live Market'
+                        : (selectedCountry?.toUpperCase() === 'USA' || selectedCountry?.toUpperCase() === 'UNITED STATES')
+                          ? reFilter
+                          : reFilter === 'Yes'
+                            ? selectedCountry?.toUpperCase() === 'CHINA' ? 'GEC (RE100)' : 'RE100 Certified'
+                            : 'Non-RE Market'}
                   </Badge>
 
                   <HStack spacing={1} color="gray.500">

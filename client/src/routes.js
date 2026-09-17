@@ -3,10 +3,13 @@ import { Icon } from '@chakra-ui/react';
 import {
   MdHome,
   MdLock,
-  MdDetails,
-  MdUploadFile,
+  MdPublic,
+  MdInsights,
+  MdVerified,
+  MdEco,
   MdMap,
   MdPerson,
+  MdPeople,
   MdBusinessCenter,
 } from 'react-icons/md';
 
@@ -39,7 +42,7 @@ const routes = [
     name: 'Users',
     layout: '/admin',
     path: '/user',
-    icon: <Icon as={MdPerson} width="20px" height="20px" color={brandGreen} />,
+    icon: <Icon as={MdPeople} width="20px" height="20px" color={brandGreen} />,
     component: <AdminUserList />,
     roles: ['admin'],
   },
@@ -64,7 +67,7 @@ const routes = [
     name: 'User Profile',
     layout: '/user',
     path: '/profile',
-    icon: <Icon as={MdMap} width="20px" height="20px" color={brandGreen} />,
+    icon: <Icon as={MdPerson} width="20px" height="20px" color={brandGreen} />,
     component: <UserProfile />,
     roles: ['user'],
   },
@@ -79,10 +82,10 @@ const routes = [
   },
   // 3. I-RECS (Dropdown Group)
   {
-    name: 'EAC',
+    name: 'Energy Attribute Certificates',
     isGroup: true,
     icon: (
-      <Icon as={MdUploadFile} width="20px" height="20px" color={brandGreen} />
+      <Icon as={MdVerified} width="20px" height="20px" color={brandGreen} />
     ),
     items: [
       {
@@ -104,7 +107,7 @@ const routes = [
         layout: '/user',
         path: '/market-prices',
         icon: (
-          <Icon as={MdDetails} width="20px" height="20px" color={brandGreen} />
+          <Icon as={MdInsights} width="20px" height="20px" color={brandGreen} />
         ),
         component: <UserMarketDashboard />,
         roles: ['user'],
@@ -113,7 +116,7 @@ const routes = [
         name: 'EAC pricing',
         layout: '/user',
         path: '/price-view',
-        icon: <Icon as={MdMap} width="20px" height="20px" color={brandGreen} />,
+        icon: <Icon as={MdPublic} width="20px" height="20px" color={brandGreen} />,
         component: <MarketMap />,
         roles: ['user'],
       },
@@ -125,7 +128,7 @@ const routes = [
     name: 'Carbon Credits',
     layout: '/user',
     path: '/carbon-credits',
-    icon: <Icon as={MdMap} width="20px" height="20px" color={brandGreen} />,
+    icon: <Icon as={MdEco} width="20px" height="20px" color={brandGreen} />,
     component: (
       <div
         style={{
