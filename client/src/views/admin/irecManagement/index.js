@@ -259,7 +259,6 @@ export default function IrecManagement() {
                 await api.post('/irec/save', [formData]);
                 fetchPlants();
               }}
-              bg="blue.600"
               color="white"
             >
               Save Plant
@@ -281,7 +280,7 @@ export default function IrecManagement() {
             position="relative"
             mb="4"
           >
-            <Icon as={MdCloudUpload} w="10" h="10" color="blue.500" />
+            <Icon as={MdCloudUpload} w="10" h="10" color="brand.500" />
             <Text mt="2">
               {excelData.length > 0
                 ? `${excelData.length} Plants Ready`
@@ -340,7 +339,7 @@ export default function IrecManagement() {
             </Button>
             <Button
               leftIcon={<MdSync />}
-              colorScheme="blue"
+              colorScheme="brand"
               h="14"
               isLoading={isProcessing}
               onClick={handleFetchNewData}

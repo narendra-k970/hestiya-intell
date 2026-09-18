@@ -1,8 +1,9 @@
-const express = require("express");
+const express = require('express');
 const router = express.Router();
-const companyProfileController = require("../controller/companyProfile.controller");
+const companyProfileController = require('../controller/companyProfile.controller');
 
-router.post("/upload", companyProfileController.uploadCompanyProfiles);
-router.get("/", companyProfileController.getCompanyProfiles);
+router.post('/upload', companyProfileController.uploadCompanyProfiles);
+router.get('/', companyProfileController.getCompanyProfiles);
+router.put('/bulk-verify', companyProfileController.bulkVerifyProfiles);
 
 module.exports = router;

@@ -4,9 +4,9 @@ import {
   Box, Flex, Text, SimpleGrid, Icon, Accordion,
   AccordionItem, AccordionButton, AccordionPanel, AccordionIcon, Badge,
   Menu, MenuButton, MenuList, MenuItem, Button, Progress,
-  useColorModeValue, Spinner, Center, Image
+  useColorModeValue, Spinner, Center, Image, Link
 } from '@chakra-ui/react';
-import { ChevronDownIcon } from '@chakra-ui/icons';
+import { ChevronDownIcon, ExternalLinkIcon } from '@chakra-ui/icons';
 import Chart from 'react-apexcharts';
 import api from '../../../utils/axiosConfig';
 import { MdLocationOn, MdDateRange, MdPeople, MdFactory, MdRecycling } from 'react-icons/md';
@@ -46,6 +46,19 @@ const Marquee = ({ buyers }) => {
   );
 };
 
+// Safe formatter for strings like "Not Disclosed" vs Numbers
+const formatVal = (val) => {
+  if (val === undefined || val === null || val === '') return 'N/A';
+  if (typeof val === 'number') return val.toLocaleString();
+  return val;
+};
+
+// Safe value for charts (ApexCharts fails on string values in data arrays)
+const safeChartVal = (val) => {
+  if (typeof val === 'number') return val;
+  return 0; // Fallback for 'Not Disclosed' or null
+};
+
 export default function UserCompanyProfile() {
   const [profiles, setProfiles] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
@@ -61,9 +74,11 @@ export default function UserCompanyProfile() {
       try {
         const res = await api.get('/company-profile');
         if (res.data.success) {
-          setProfiles(res.data.data);
-          if (res.data.data.length > 0) {
-            setSelectedId(res.data.data[0]._id);
+          // STRICT FILTER: Only Live or Verified
+          const publicProfiles = res.data.data.filter(p => p.dataStatus === 'Live' || p.dataStatus === 'Verified');
+          setProfiles(publicProfiles);
+          if (publicProfiles.length > 0) {
+            setSelectedId(publicProfiles[0]._id);
           }
         }
       } catch (err) {
@@ -76,7 +91,7 @@ export default function UserCompanyProfile() {
   }, []);
 
   if (loading) return <Center h="100vh"><Spinner size="xl" color={brandGreen} /></Center>;
-  if (profiles.length === 0) return <Center h="100vh"><Text>No company profiles found. Please upload data via Admin panel.</Text></Center>;
+  if (profiles.length === 0) return <Center h="100vh"><Text>No verified company profiles found.</Text></Center>;
 
   const company = profiles.find(p => p._id === selectedId) || profiles[0];
 
@@ -88,7 +103,7 @@ export default function UserCompanyProfile() {
     dataLabels: { enabled: false },
     tooltip: { enabled: false }
   };
-  const ghgSeries = [{ name: 'Emissions', data: [300000, 320000, 310000, 350000, 400000, 420000, company.emissions?.scope1_Plus_2_tCO2e || 0] }];
+  const ghgSeries = [{ name: 'Emissions', data: [300000, 320000, 310000, 350000, 400000, 420000, safeChartVal(company.emissions?.scope1_Plus_2_tCO2e)] }];
 
   const getRadialOptions = (color, label) => ({
     chart: { type: 'radialBar', sparkline: { enabled: true } },
@@ -110,7 +125,14 @@ export default function UserCompanyProfile() {
   return (
     <Box pt={{ base: '180px', md: '120px', xl: '120px' }} px="20px">
       <Flex justify="space-between" align="center" mb="20px" direction={{base: 'column', md: 'row'}} gap="15px">
-        <Text fontSize="2xl" fontWeight="bold" color={textColor}>Company Dashboard</Text>
+        <Box>
+          <Text fontSize="2xl" fontWeight="bold" color={textColor}>Company Dashboard</Text>
+          {company.dataSource && company.dataSource.startsWith('http') && (
+            <Link href={company.dataSource} isExternal color="blue.500" fontSize="sm" fontWeight="bold">
+              View Primary Source <ExternalLinkIcon mx="2px" />
+            </Link>
+          )}
+        </Box>
         
         <Menu>
           <MenuButton 
@@ -153,6 +175,14 @@ export default function UserCompanyProfile() {
         </Menu>
       </Flex>
 
+      {company.notes && !company.notes.includes('Already researched') && (
+        <Box bg={useColorModeValue('yellow.50', 'rgba(236, 201, 75, 0.1)')} p="15px" borderRadius="10px" mb="20px" border="1px solid" borderColor={useColorModeValue('yellow.200', 'transparent')}>
+          <Text fontSize="sm" color={useColorModeValue('yellow.800', 'yellow.200')} fontWeight="600">
+            <strong>Notes:</strong> {company.notes}
+          </Text>
+        </Box>
+      )}
+
       <SimpleGrid columns={{ base: 1, xl: 2 }} spacing="20px" mb="20px">
         <SimpleGrid columns={{ base: 1, sm: 3 }} spacing="20px">
           <Box bg={cardBg} p="20px" borderRadius="15px" boxShadow="sm">
@@ -167,22 +197,22 @@ export default function UserCompanyProfile() {
               <Icon as={MdDateRange} color="gray.400" mr="5px" />
               <Text fontSize="xs" fontWeight="bold" color="gray.500" letterSpacing="wide">ESTABLISHED</Text>
             </Flex>
-            <Text fontSize="xl" fontWeight="bold" color={textColor}>{company.basicInfo?.yearFounded || 'N/A'}</Text>
+            <Text fontSize="xl" fontWeight="bold" color={textColor}>{formatVal(company.basicInfo?.yearFounded)}</Text>
           </Box>
           <Box bg={cardBg} p="20px" borderRadius="15px" boxShadow="sm">
             <Flex align="center" mb="10px">
               <Icon as={MdPeople} color="gray.400" mr="5px" />
               <Text fontSize="xs" fontWeight="bold" color="gray.500" letterSpacing="wide">EMPLOYEES</Text>
             </Flex>
-            <Text fontSize="xl" fontWeight="bold" color={textColor}>{company.basicInfo?.numEmployees?.toLocaleString() || 'N/A'}</Text>
+            <Text fontSize="xl" fontWeight="bold" color={textColor}>{formatVal(company.basicInfo?.numEmployees)}</Text>
           </Box>
         </SimpleGrid>
 
         <Box bg={cardBg} p="20px" borderRadius="15px" boxShadow="sm">
           <Flex justify="space-between" align="center" mb="10px">
             <Text fontSize="xs" fontWeight="bold" color="gray.500" letterSpacing="wide">GHG EMISSION OVERVIEW</Text>
-            <Badge colorScheme="green" bg={brandBg} color={brandGreen} px="2" py="1" borderRadius="md">
-              Total Emissions: {company.emissions?.scope1_Plus_2_tCO2e?.toLocaleString() || 'N/A'}
+            <Badge colorScheme={typeof company.emissions?.scope1_Plus_2_tCO2e === 'string' ? 'gray' : 'green'} bg={typeof company.emissions?.scope1_Plus_2_tCO2e === 'string' ? 'gray.100' : brandBg} color={typeof company.emissions?.scope1_Plus_2_tCO2e === 'string' ? 'gray.600' : brandGreen} px="2" py="1" borderRadius="md">
+              Total Emissions: {formatVal(company.emissions?.scope1_Plus_2_tCO2e)}
             </Badge>
           </Flex>
           <Box h="80px">
@@ -194,25 +224,35 @@ export default function UserCompanyProfile() {
       <SimpleGrid columns={{ base: 1, md: 3 }} spacing="20px" mb="20px">
         <Box bg={cardBg} borderRadius="15px" overflow="hidden" h={{base: '300px', md: '100%'}} boxShadow="sm">
           <iframe 
-            src={`https://maps.google.com/maps?q=${company.location?.coordinates?.latitude || 20},${company.location?.coordinates?.longitude || 77}&t=&z=10&ie=UTF8&iwloc=&output=embed`}
+            src={`https://maps.google.com/maps?q=${safeChartVal(company.location?.coordinates?.latitude) || 20},${safeChartVal(company.location?.coordinates?.longitude) || 77}&t=&z=10&ie=UTF8&iwloc=&output=embed`}
             width="100%" height="100%" style={{ border: 0 }} allowFullScreen="" loading="lazy"
           ></iframe>
         </Box>
 
         <Box bg={cardBg} p="20px" borderRadius="15px" boxShadow="sm" display="flex" flexDirection="column" justifyContent="center">
-          <Text fontSize="xs" fontWeight="bold" color="gray.500" letterSpacing="wide" mb="20px">WORKFORCE DIVERSITY</Text>
-          <Flex justify="space-between" mb="5px">
-            <Text fontWeight="bold" fontSize="sm">{company.workforce?.malePercentage || 0}%</Text>
-            <Text fontWeight="bold" fontSize="sm">{company.workforce?.femalePercentage || 0}%</Text>
-          </Flex>
-          <Flex h="15px" borderRadius="full" overflow="hidden" mb="10px">
-            <Box w={`${company.workforce?.malePercentage || 0}%`} bg="#3182ce" />
-            <Box w={`${company.workforce?.femalePercentage || 0}%`} bg="#d53f8c" />
-          </Flex>
-          <Flex justify="space-between">
-            <Text fontSize="2xl">👨🏻‍💼</Text>
-            <Text fontSize="2xl">👩🏻‍💼</Text>
-          </Flex>
+          <Text fontSize="xs" fontWeight="bold" color="gray.500" letterSpacing="wide" textAlign="center" mb="20px">WORKFORCE DIVERSITY</Text>
+          {typeof company.workforce?.malePercentage === 'number' && typeof company.workforce?.femalePercentage === 'number' ? (
+            <>
+              <Flex justify="space-between" mb="5px">
+                <Text fontWeight="bold" fontSize="sm">{formatVal(company.workforce?.malePercentage)}%</Text>
+                <Text fontWeight="bold" fontSize="sm">{formatVal(company.workforce?.femalePercentage)}%</Text>
+              </Flex>
+              <Flex h="15px" borderRadius="full" overflow="hidden" mb="10px">
+                <Box w={`${safeChartVal(company.workforce?.malePercentage)}%`} bg="#3182ce" />
+                <Box w={`${safeChartVal(company.workforce?.femalePercentage)}%`} bg="#d53f8c" />
+              </Flex>
+              <Flex justify="space-between">
+                <Text fontSize="2xl">👨🏻‍💼</Text>
+                <Text fontSize="2xl">👩🏻‍💼</Text>
+              </Flex>
+            </>
+          ) : (
+            <Center flexDirection="column" h="100%">
+              <Icon as={MdPeople} color="gray.300" w="40px" h="40px" mb="10px" />
+              <Text fontSize="xl" fontWeight="bold" color={textColor}>{formatVal(company.basicInfo?.numEmployees)}</Text>
+              <Text fontSize="xs" color="gray.400">Total Workforce</Text>
+            </Center>
+          )}
         </Box>
 
         <Box bg={cardBg} p="20px" borderRadius="15px" boxShadow="sm" display="flex" flexDirection="column" justifyContent="center">
@@ -241,19 +281,23 @@ export default function UserCompanyProfile() {
       <Flex direction={{ base: 'column', xl: 'row' }} gap="20px" mb="20px" align="stretch">
         <Box bg={cardBg} p="15px" borderRadius="15px" boxShadow="sm" w={{ base: '100%', xl: '150px' }} flexShrink={0} textAlign="center" display="flex" flexDirection="column" justifyContent="center">
           <Text fontSize="xs" fontWeight="bold" color="gray.500" letterSpacing="wide">SUSTAINABLE</Text>
-          <Chart options={getRadialOptions(brandGreen, 'Sustainable')} series={[company.supplyChain?.sustainableMaterialsPercentage || 0]} type="radialBar" height={150} />
+          {typeof company.supplyChain?.sustainableMaterialsPercentage === 'string' ? (
+             <Text mt="15px" fontWeight="bold" color="gray.500">{company.supplyChain.sustainableMaterialsPercentage}</Text>
+          ) : (
+             <Chart options={getRadialOptions(brandGreen, 'Sustainable')} series={[safeChartVal(company.supplyChain?.sustainableMaterialsPercentage)]} type="radialBar" height={150} />
+          )}
         </Box>
 
         <SimpleGrid columns={{ base: 1, sm: 2, md: 3, xl: 5 }} spacing="15px" flex="1">
           {[
             { val: company.resources?.solarCapacity_MWp, label: 'SOLAR CAPACITY (MWp)' },
-            { val: company.resources?.waste?.totalGenerated_MT?.toLocaleString(), label: 'TOTAL WASTE (MT)' },
-            { val: company.resources?.totalEnergy_TJ?.toLocaleString(), label: 'TOTAL ENERGY (TJ)' },
-            { val: company.resources?.totalWater_KL?.toLocaleString(), label: 'TOTAL WATER (KL)' },
+            { val: company.resources?.waste?.totalGenerated_MT, label: 'TOTAL WASTE (MT)' },
+            { val: company.resources?.totalEnergy_TJ, label: 'TOTAL ENERGY (TJ)' },
+            { val: company.resources?.totalWater_KL, label: 'TOTAL WATER (KL)' },
             { val: company.emissions?.energyCarbonIntensity, label: 'ENERGY CARBON INTENSITY' }
           ].map((kpi, idx) => (
             <Box key={idx} bg={cardBg} p="20px 15px" borderRadius="15px" boxShadow="sm" textAlign="center" display="flex" flexDirection="column" justifyContent="center">
-              <Text fontSize={{base: "xl", lg: "2xl"}} fontWeight="bold" color={textColor} mb="5px" wordBreak="break-word">{kpi.val ?? 'N/A'}</Text>
+              <Text fontSize={{base: "xl", lg: "2xl"}} fontWeight="bold" color={typeof kpi.val === 'string' ? 'gray.500' : textColor} mb="5px" wordBreak="break-word">{formatVal(kpi.val)}</Text>
               <Text fontSize="10px" color="gray.500" fontWeight="bold" textTransform="uppercase">{kpi.label}</Text>
             </Box>
           ))}
@@ -263,17 +307,25 @@ export default function UserCompanyProfile() {
       <SimpleGrid columns={{ base: 1, md: 4 }} spacing="20px" mb="20px">
         <Box bg={cardBg} p="20px" borderRadius="15px" boxShadow="sm" textAlign="center">
           <Text fontSize="xs" fontWeight="bold" color="gray.500" letterSpacing="wide">RENEWABLE %</Text>
-          <Chart options={getRadialOptions(brandGreen, 'RE')} series={[company.resources?.rePercentage || 0]} type="radialBar" height={150} />
+          {typeof company.resources?.rePercentage === 'string' ? (
+             <Text mt="30px" fontWeight="bold" color="gray.500">{company.resources.rePercentage}</Text>
+          ) : (
+             <Chart options={getRadialOptions(brandGreen, 'RE')} series={[safeChartVal(company.resources?.rePercentage)]} type="radialBar" height={150} />
+          )}
         </Box>
         <Box bg={cardBg} p="20px" borderRadius="15px" boxShadow="sm" textAlign="center">
           <Text fontSize="xs" fontWeight="bold" color="gray.500" letterSpacing="wide">ESG SCORE</Text>
-          <Chart options={getRadialOptions('#3182ce', 'ESG')} series={[company.scores?.esgScore || 0]} type="radialBar" height={150} />
+          {typeof company.scores?.esgScore === 'string' ? (
+             <Text mt="30px" fontWeight="bold" color="gray.500">{company.scores.esgScore}</Text>
+          ) : (
+             <Chart options={getRadialOptions('#3182ce', 'ESG')} series={[safeChartVal(company.scores?.esgScore)]} type="radialBar" height={150} />
+          )}
         </Box>
         
         <Box bg={cardBg} p="20px" borderRadius="15px" boxShadow="sm" display="flex" flexDirection="column" justifyContent="center">
           <Text fontSize="xs" fontWeight="bold" color="gray.500" letterSpacing="wide" textAlign="center" mb="15px">COMMITMENTS</Text>
           <SimpleGrid columns={2} spacing="15px">
-            <Flex align="center"><Box w="10px" h="10px" borderRadius="full" bg={company.certifications?.re100Member === 'Yes' ? 'green.500' : 'red.500'} mr="10px"/> <Text fontWeight="bold">RE100</Text></Flex>
+            <Flex align="center"><Box w="10px" h="10px" borderRadius="full" bg={company.certifications?.re100Member === 'Yes' ? 'green.500' : 'gray.300'} mr="10px"/> <Text fontWeight="bold">RE100</Text></Flex>
             <Flex align="center"><Box w="10px" h="10px" borderRadius="full" bg={company.certifications?.sbtiStatus === 'Committed' || company.certifications?.sbtiStatus === 'Certified' ? 'green.500' : 'red.500'} mr="10px"/> <Text fontWeight="bold">SBTi</Text></Flex>
           </SimpleGrid>
         </Box>

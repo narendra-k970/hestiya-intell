@@ -8,7 +8,7 @@ import {
   Text,
   useToast,
   useColorModeValue,
-  VStack,
+  VStack
 } from '@chakra-ui/react';
 import { MdCloudUpload, MdBusinessCenter } from 'react-icons/md';
 import * as XLSX from 'xlsx';
@@ -35,12 +35,12 @@ export default function CompanyProfileUpload() {
       try {
         const bstr = evt.target.result;
         const wb = XLSX.read(bstr, { type: 'binary' });
-        const ws = wb.Sheets[wb.SheetNames[0]];
+        // Use 'Supplier Master (India)' sheet or fallback to first sheet
+        const sheetName = wb.SheetNames.includes('Supplier Master (India)') ? 'Supplier Master (India)' : wb.SheetNames[0];
+        const ws = wb.Sheets[sheetName];
 
-        // Parses Excel headers into JSON keys
         const rawData = XLSX.utils.sheet_to_json(ws);
 
-        // API Call to Backend
         const res = await api.post('/company-profile/upload', rawData);
 
         if (res.data.success) {
@@ -56,16 +56,14 @@ export default function CompanyProfileUpload() {
         console.error('Upload Error:', err);
         toast({
           title: 'Error',
-          description:
-            err.response?.data?.message ||
-            'Upload fail ho gaya. Excel sheet check karein.',
+          description: err.response?.data?.message || 'Upload fail ho gaya. Excel sheet check karein.',
           status: 'error',
           duration: 5000,
           isClosable: true,
         });
       } finally {
         setIsUploading(false);
-        e.target.value = ''; // Clear input
+        e.target.value = ''; 
       }
     };
     reader.readAsBinaryString(file);
@@ -76,58 +74,18 @@ export default function CompanyProfileUpload() {
       <VStack spacing="20px" align="stretch">
         <Box bg={cardBg} p="30px" borderRadius="20px" boxShadow="sm">
           <Flex direction="column" align="center">
-            <Icon
-              as={MdBusinessCenter}
-              w="40px"
-              h="40px"
-              color="brand.500"
-              mb="10px"
-            />
-            <Text fontSize="2xl" fontWeight="700" color={textColor}>
-              Company Profiling Upload
-            </Text>
+            <Icon as={MdBusinessCenter} w="40px" h="40px" color="brand.500" mb="10px" />
+            <Text fontSize="2xl" fontWeight="700" color={textColor}>Company Profiling Upload</Text>
             <Text fontSize="sm" color={secondaryColor} mb="10px">
-              Upload the Excel file containing the 47-column company data
+              Upload the Excel file containing the 47-column company data (uses 'Supplier Master (India)' sheet)
             </Text>
 
-            <Flex
-              mt="20px"
-              direction="column"
-              align="center"
-              justify="center"
-              border="2px dashed"
-              borderColor={isUploading ? 'brand.500' : borderColor}
-              p="80px"
-              borderRadius="15px"
-              w="100%"
-              bg={isUploading ? uploadHoverBg : 'transparent'}
-              position="relative"
-              transition="all 0.3s ease"
-              _hover={{ bg: isUploading ? uploadHoverBg : 'gray.50' }}
-            >
+            <Flex mt="20px" direction="column" align="center" justify="center" border="2px dashed" borderColor={isUploading ? 'brand.500' : borderColor} p="80px" borderRadius="15px" w="100%" bg={isUploading ? uploadHoverBg : 'transparent'} position="relative" transition="all 0.3s ease" _hover={{ bg: isUploading ? uploadHoverBg : 'gray.50' }}>
               <Icon as={MdCloudUpload} w="60px" h="60px" color="brand.500" />
-              <Text
-                my="15px"
-                fontWeight="500"
-                color={secondaryColor}
-                textAlign="center"
-              >
-                {isUploading
-                  ? 'Processing Excel Data & Syncing...'
-                  : 'Click or Drag Excel file here'}
+              <Text my="15px" fontWeight="500" color={secondaryColor} textAlign="center">
+                {isUploading ? 'Processing Excel Data & Syncing...' : 'Click or Drag Excel file here'}
               </Text>
-
-              <Input
-                type="file"
-                accept=".csv, .xlsx"
-                onChange={handleFileUpload}
-                position="absolute"
-                width="100%"
-                height="100%"
-                opacity="0"
-                cursor={isUploading ? 'not-allowed' : 'pointer'}
-                disabled={isUploading}
-              />
+              <Input type="file" accept=".csv, .xlsx" onChange={handleFileUpload} position="absolute" width="100%" height="100%" opacity="0" cursor={isUploading ? 'not-allowed' : 'pointer'} disabled={isUploading} />
             </Flex>
           </Flex>
         </Box>

@@ -242,7 +242,7 @@ export default function TotalSpent(props) {
         </HStack>
         <Text fontSize="xs" color="secondaryGray.600">
           The chart automatically compares the{' '}
-          <b>Latest Database Entry ({currentMonthName})</b>
+          <b>Latest Month ({currentMonthName})</b>
           against your selection. By default, it shows the immediate previous
           month.
         </Text>

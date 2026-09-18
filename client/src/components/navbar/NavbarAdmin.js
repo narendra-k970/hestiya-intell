@@ -123,8 +123,11 @@ export default function AdminNavbar(props) {
             color={mainText}
             href="#"
             fontWeight="bold"
-            fontSize="34px"
+            fontSize={{ base: '20px', md: '24px' }}
             _hover={{ color: { mainText } }}
+            whiteSpace="nowrap"
+            overflow="hidden"
+            textOverflow="ellipsis"
           >
             {brandText}
           </Link>

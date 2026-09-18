@@ -18,8 +18,8 @@ export function SidebarBrand() {
       >
         {toggleSidebar ? (
           <Box
-            bg={logoColor}
-            color={useColorModeValue('white', 'navy.700')}
+            bg="brand.500"
+            color="white"
             borderRadius="10px"
             w="40px"
             h="40px"
