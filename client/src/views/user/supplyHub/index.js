@@ -150,13 +150,6 @@ export default function SupplyHub() {
         
         <Box flex="1" minW={0} w="100%">
           <Text fontSize="3xl" fontWeight="bold" color={textColor} mb="20px">{company.basicInfo?.companyName}</Text>
-          {company.notes && !company.notes.includes('Already researched') && (
-            <Box bg={useColorModeValue('yellow.50', 'rgba(236, 201, 75, 0.1)')} p="15px" borderRadius="10px" mb="20px" border="1px solid" borderColor={useColorModeValue('yellow.200', 'transparent')}>
-              <Text fontSize="sm" color={useColorModeValue('yellow.800', 'yellow.200')} fontWeight="600">
-                <strong>Notes:</strong> {company.notes}
-              </Text>
-            </Box>
-          )}
 
           <SimpleGrid columns={{ base: 1, md: 2 }} spacing="20px">
             <Box bg={cardBg} p="20px" borderRadius="15px" boxShadow="sm">
