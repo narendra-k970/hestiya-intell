@@ -158,7 +158,7 @@ export default function SupplyHub() {
             </Box>
           )}
 
-          <SimpleGrid columns={{ base: 1, md: 3 }} spacing="20px">
+          <SimpleGrid columns={{ base: 1, md: 2 }} spacing="20px">
             <Box bg={cardBg} p="20px" borderRadius="15px" boxShadow="sm">
               <Flex align="center" mb="10px">
                 <Icon as={MdLocationOn} color="gray.400" mr="5px" />
