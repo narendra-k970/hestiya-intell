@@ -27,6 +27,7 @@ import ForgotPassword from 'views/auth/forgotPassword';
 import CompanyProfileUpload from 'views/admin/companyProfile';
 import UserCompanyProfile from 'views/user/companyProfile';
 import SupplyHubExplorer from 'views/user/supplyHub';
+import ClimateProfileOverview from 'views/user/climateProfile';
 const brandGreen = '#19944D';
 
 const routes = [
@@ -73,16 +74,25 @@ const routes = [
     roles: ['user'],
   },
   {
-    name: 'H & M and Hestiya Company Profile',
+    name: 'Climate Profile',
+    layout: '/user',
+    path: '/climate-profile',
+    icon: <Icon as={MdBusinessCenter} width="20px" height="20px" color={brandGreen} />,
+    component: <ClimateProfileOverview />,
+    roles: ['user', 'admin'],
+  },
+  {
+    name: 'Company Profile Details',
+    sidebar: false,
     layout: '/user',
     path: '/company-profile',
     icon: <Icon as={MdBusinessCenter} width="20px" height="20px" color={brandGreen} />,
     component: <UserCompanyProfile />,
     roles: ['user', 'admin'],
-    requiredEmail: 'support@hestiya.com',
   },
   {
     name: 'Supply Hub Explorer',
+    sidebar: false,
     layout: '/user',
     path: '/supply-hub',
     icon: <Icon as={MdMap} width="20px" height="20px" color={brandGreen} />,

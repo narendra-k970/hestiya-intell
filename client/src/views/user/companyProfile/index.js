@@ -75,7 +75,9 @@ export default function UserCompanyProfile() {
         const res = await api.get('/company-profile');
         if (res.data.success) {
           // STRICT FILTER: Only Live or Verified
-          const publicProfiles = res.data.data.filter(p => p.dataStatus === 'Live' || p.dataStatus === 'Verified');
+          const publicProfiles = res.data.data
+            .filter(p => p.dataStatus === 'Live' || p.dataStatus === 'Verified')
+            .sort((a, b) => a.basicInfo?.companyName?.localeCompare(b.basicInfo?.companyName));
           setProfiles(publicProfiles);
           if (publicProfiles.length > 0) {
             setSelectedId(publicProfiles[0]._id);

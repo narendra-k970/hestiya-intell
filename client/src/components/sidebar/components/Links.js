@@ -84,6 +84,7 @@ export function SidebarLinks(props) {
         : true;
 
       if (!isRoleAllowed || !isEmailAllowed) return null;
+      if (route.sidebar === false) return null;
 
       // CASE 1: AGAR GROUP HAI (I-Recs)
       if (route.isGroup) {
