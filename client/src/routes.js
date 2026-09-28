@@ -26,6 +26,7 @@ import AdminUserList from 'views/admin/user/index';
 import ForgotPassword from 'views/auth/forgotPassword';
 import CompanyProfileUpload from 'views/admin/companyProfile';
 import UserCompanyProfile from 'views/user/companyProfile';
+import SupplyHubExplorer from 'views/user/supplyHub';
 const brandGreen = '#19944D';
 
 const routes = [
@@ -79,6 +80,14 @@ const routes = [
     component: <UserCompanyProfile />,
     roles: ['user', 'admin'],
     requiredEmail: 'support@hestiya.com',
+  },
+  {
+    name: 'Supply Hub Explorer',
+    layout: '/user',
+    path: '/supply-hub',
+    icon: <Icon as={MdMap} width="20px" height="20px" color={brandGreen} />,
+    component: <SupplyHubExplorer />,
+    roles: ['user'], // Sirf user ko dikhe, ya admin ko bhi? User ne kaha "sirf ussi user ko dikhe" (meaning user view, not admin view)
   },
   // 3. I-RECS (Dropdown Group)
   {
