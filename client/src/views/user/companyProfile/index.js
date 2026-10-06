@@ -484,6 +484,9 @@ export default function UserCompanyProfile() {
             <FormControl mb={3}>
               <FormLabel>Upload Supporting File (Optional)</FormLabel>
               <Input type="file" p={1} onChange={(e) => setClaimData({...claimData, missingDataFile: e.target.files[0]})} />
+              <Text fontSize="xs" color="gray.500" mt={1}>
+                You can upload your ESG certificate, GHG report, or other relevant documents.
+              </Text>
             </FormControl>
           </ModalBody>
           <ModalFooter>

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   Box, SimpleGrid, Text, useColorModeValue, Flex, Button, Center, Spinner, IconButton, Icon,
   Modal, ModalOverlay, ModalContent, ModalHeader, ModalFooter, ModalBody, ModalCloseButton,
-  FormControl, FormLabel, Input, Textarea, useDisclosure, useToast
+  FormControl, FormLabel, Input, Textarea, useDisclosure, useToast, Badge
 } from '@chakra-ui/react';
 import { useNavigate } from 'react-router-dom';
 import { MdArrowBack } from 'react-icons/md';
@@ -136,6 +136,24 @@ export default function SupplierList() {
                 justifyContent="space-between"
                 position="relative"
               >
+                {brand.scores?.esgScore && brand.scores.esgScore !== 'N/A' && (
+                  <Badge 
+                    colorScheme={brand.scores.esgScore === 'Not Disclosed' ? 'gray' : 'blue'} 
+                    position="absolute" 
+                    top="8px" 
+                    left="8px"
+                    fontSize="10px"
+                    px="2"
+                    py="1"
+                    borderRadius="md"
+                    textTransform="uppercase"
+                    maxW="110px"
+                    isTruncated
+                  >
+                    ESG: {brand.scores.esgScore === 'Not Disclosed' ? 'N/D' : brand.scores.esgScore}
+                  </Badge>
+                )}
+                
                 <Button 
                   size="xs" 
                   position="absolute" 
@@ -199,6 +217,9 @@ export default function SupplierList() {
             <FormControl mb={3}>
               <FormLabel>Upload Supporting File (Optional)</FormLabel>
               <Input type="file" p={1} onChange={(e) => setClaimData({...claimData, missingDataFile: e.target.files[0]})} />
+              <Text fontSize="xs" color="gray.500" mt={1}>
+                You can upload your ESG certificate, GHG report, or other relevant documents.
+              </Text>
             </FormControl>
 
           </ModalBody>
