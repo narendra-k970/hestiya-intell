@@ -14,6 +14,11 @@ import {
   Icon,
   SimpleGrid,
   Button,
+  Accordion,
+  AccordionItem,
+  AccordionButton,
+  AccordionPanel,
+  AccordionIcon,
   Modal,
   ModalOverlay,
   ModalContent,
@@ -48,6 +53,7 @@ import {
   MdCheckCircle,
   MdFeedback,
   MdDelete,
+  MdBookmarkRemove
 } from 'react-icons/md';
 import api from '../../../utils/axiosConfig';
 
@@ -153,6 +159,28 @@ export default function UserProfile() {
     };
     fetchProfileAndBookmarks();
   }, []);
+
+  const handleRemoveBookmark = async (countryName) => {
+    try {
+      const res = await api.post('/user/bookmark', { country: countryName });
+      if (res.data.success) {
+        setBookmarkedPrices((prev) => prev.filter((item) => item.country !== countryName));
+        toast({
+          title: 'Bookmark removed',
+          status: 'success',
+          duration: 3000,
+          isClosable: true,
+        });
+      }
+    } catch (err) {
+      toast({
+        title: 'Error removing bookmark',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      });
+    }
+  };
 
   // --- Reset Password Handlers ---
   const handleOpenModal = () => {
@@ -364,20 +392,34 @@ export default function UserProfile() {
 
       <Divider mb="40px" borderColor={borderColor} />
 
-      {/* ── Details Grid ── */}
-      <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacingX={10} spacingY={12} mb="40px">
-        <InfoItem icon={MdPerson} label="Full Name" value={`${user?.firstName} ${user?.lastName}`} />
-        <InfoItem icon={MdEmail} label="Registered Email" value={user?.email} />
-        <InfoItem icon={MdPhone} label="Contact Number" value={user?.phone || user?.phoneNumber || 'Not Linked'} />
-        <InfoItem icon={MdBusiness} label="Organization" value={user?.companyName || 'Private User'} />
-        <InfoItem icon={MdLayers} label="Active Subscription" value={user?.plan || 'Basic Analytics'} />
-        <InfoItem
-          icon={MdVerified}
-          label="Account Status"
-          value={user?.isEmailVerified ? 'Active & Verified' : 'Verification Needed'}
-        />
-        <InfoItem icon={MdLocationOn} label="Region" value={user?.countryOfIncorporation || 'Global'} />
-      </SimpleGrid>
+      {/* ── Details Accordion ── */}
+      <Accordion allowToggle mb="40px">
+        <AccordionItem border="1px solid" borderColor={borderColor} borderRadius="15px" bg={cardBg} overflow="hidden">
+          <h2>
+            <AccordionButton p="20px" _hover={{ bg: useColorModeValue('gray.50', 'whiteAlpha.100') }}>
+              <Box flex="1" textAlign="left" fontWeight="bold" fontSize="lg" color={textColor}>
+                Account Details
+              </Box>
+              <AccordionIcon />
+            </AccordionButton>
+          </h2>
+          <AccordionPanel pb={4} px="20px">
+            <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacingX={10} spacingY={12}>
+              <InfoItem icon={MdPerson} label="Full Name" value={`${user?.firstName} ${user?.lastName}`} />
+              <InfoItem icon={MdEmail} label="Registered Email" value={user?.email} />
+              <InfoItem icon={MdPhone} label="Contact Number" value={user?.phone || user?.phoneNumber || 'Not Linked'} />
+              <InfoItem icon={MdBusiness} label="Organization" value={user?.companyName || 'Private User'} />
+              <InfoItem icon={MdLayers} label="Active Subscription" value={user?.plan || 'Basic Analytics'} />
+              <InfoItem
+                icon={MdVerified}
+                label="Account Status"
+                value={user?.isEmailVerified ? 'Active & Verified' : 'Verification Needed'}
+              />
+              <InfoItem icon={MdLocationOn} label="Region" value={user?.countryOfIncorporation || 'Global'} />
+            </SimpleGrid>
+          </AccordionPanel>
+        </AccordionItem>
+      </Accordion>
 
       <Divider mb="40px" borderColor={borderColor} />
 

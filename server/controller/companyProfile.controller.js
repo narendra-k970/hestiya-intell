@@ -164,3 +164,34 @@ exports.getCompanyProfiles = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
+
+const ProfileClaim = require("../models/ProfileClaim");
+
+exports.claimProfile = async (req, res) => {
+  try {
+    const { companyId, companyName, userName, userEmail, userPhone, missingDataInfo } = req.body;
+    let attachedFileUrl = null;
+
+    if (req.file) {
+      // In a real scenario you would upload to S3. Here we use the local path.
+      attachedFileUrl = `/uploads/${req.file.filename}`;
+    }
+
+    const newClaim = new ProfileClaim({
+      companyId,
+      companyName,
+      userName,
+      userEmail,
+      userPhone,
+      missingDataInfo,
+      attachedFileUrl
+    });
+
+    await newClaim.save();
+    res.status(200).json({ success: true, message: "Profile claim submitted successfully", claim: newClaim });
+  } catch (error) {
+    console.error("Error submitting profile claim:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};

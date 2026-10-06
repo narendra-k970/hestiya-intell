@@ -179,6 +179,51 @@ const YearlyTrendChart = ({ data }) => {
   );
 };
 
+const SupplierClimateSummary = ({ profiles }) => {
+  const brandGreen = '#19944D';
+  const bg = useColorModeValue('white', 'navy.800');
+  const textColor = useColorModeValue('secondaryGray.900', 'white');
+
+  const validProfiles = profiles.filter(p => p.dataStatus === 'Live' || p.dataStatus === 'Verified');
+  const totalSuppliers = validProfiles.length;
+  
+  let sbtiCount = 0;
+  let re100Count = 0;
+  
+  validProfiles.forEach(p => {
+    if (p.certifications?.sbtiStatus === 'Committed' || p.certifications?.sbtiStatus === 'Certified') sbtiCount++;
+    if (p.certifications?.re100Member === 'Yes') re100Count++;
+  });
+
+  return (
+    <Card bg={bg} p="15px" borderRadius="20px" h="100%">
+      <Text fontWeight="800" mb="3" fontSize="md" color={brandGreen}>
+        Global Supply Chain Climate Overview
+      </Text>
+      <Box mt="10px">
+        <SimpleGrid columns={2} spacing="15px">
+          <Box p="15px" bg={useColorModeValue('green.50', 'whiteAlpha.100')} borderRadius="10px">
+            <Text fontSize="2xl" fontWeight="bold" color={textColor}>{totalSuppliers}</Text>
+            <Text fontSize="xs" fontWeight="bold" color="gray.500">SUPPLIERS TRACKED</Text>
+          </Box>
+          <Box p="15px" bg={useColorModeValue('blue.50', 'whiteAlpha.100')} borderRadius="10px">
+            <Text fontSize="2xl" fontWeight="bold" color={textColor}>{sbtiCount}</Text>
+            <Text fontSize="xs" fontWeight="bold" color="gray.500">SBTI COMMITTED</Text>
+          </Box>
+          <Box p="15px" bg={useColorModeValue('orange.50', 'whiteAlpha.100')} borderRadius="10px">
+            <Text fontSize="2xl" fontWeight="bold" color={textColor}>{re100Count}</Text>
+            <Text fontSize="xs" fontWeight="bold" color="gray.500">RE100 MEMBERS</Text>
+          </Box>
+          <Box p="15px" bg={useColorModeValue('purple.50', 'whiteAlpha.100')} borderRadius="10px">
+            <Text fontSize="2xl" fontWeight="bold" color={textColor}>{Math.round((sbtiCount / (totalSuppliers || 1)) * 100)}%</Text>
+            <Text fontSize="xs" fontWeight="bold" color="gray.500">SUPPLIER ALIGNMENT</Text>
+          </Box>
+        </SimpleGrid>
+      </Box>
+    </Card>
+  );
+};
+
 export default function UserReports() {
   // --- 1. HOOKS ---
   const location = useLocation();
@@ -188,6 +233,7 @@ export default function UserReports() {
 
   const [allPlants, setAllPlants] = useState([]);
   const [pricingData, setPricingData] = useState([]);
+  const [companyProfiles, setCompanyProfiles] = useState([]);
   const [totalVol, setTotalVol] = useState(0);
   const [isSyncing, setIsSyncing] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -202,6 +248,10 @@ export default function UserReports() {
         setLoading(true);
         const pRes = await api.get('/pricing/country-avg');
         setPricingData(pRes.data?.data || []);
+        
+        const cRes = await api.get('/company-profile');
+        setCompanyProfiles(cRes.data?.data || []);
+        
         await fetchProgressiveData();
       } catch (err) {
         console.error(err);
@@ -417,7 +467,13 @@ export default function UserReports() {
       {/* Row 2: Analytics Widgets */}
       <SimpleGrid columns={{ base: 1, md: 2 }} gap="20px" mb="20px">
         <YearlyTrendChart data={allPlants} />
+        <SupplierClimateSummary profiles={companyProfiles} />
+      </SimpleGrid>
+
+      {/* Row 3: Additional Widgets */}
+      <SimpleGrid columns={{ base: 1, md: 2 }} gap="20px">
         <RecentlyCommissioned data={allPlants} />
+        <Box display={{ base: 'none', md: 'block' }} />
       </SimpleGrid>
     </Box>
   );

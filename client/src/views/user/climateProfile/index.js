@@ -14,7 +14,7 @@ export default function ClimateProfileOverview() {
       name: 'H&M Group',
       logo: 'https://upload.wikimedia.org/wikipedia/commons/5/53/H%26M-Logo.svg',
       summary: 'H&M Group is a global fashion brand committed to leading the change towards a circular and climate-positive fashion industry. Explore their supply chain, emission metrics, and sustainability goals.',
-      route: '/user/company-profile'
+      route: '/user/suppliers'
     }
   ];
 
@@ -50,7 +50,7 @@ export default function ClimateProfileOverview() {
               w="100%" 
               onClick={() => navigate(brand.route)}
             >
-              View Profile
+              View Suppliers
             </Button>
           </Box>
         ))}

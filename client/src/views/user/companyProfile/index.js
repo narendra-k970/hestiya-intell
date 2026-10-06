@@ -4,12 +4,14 @@ import {
   Box, Flex, Text, SimpleGrid, Icon, Accordion,
   AccordionItem, AccordionButton, AccordionPanel, AccordionIcon, Badge,
   Menu, MenuButton, MenuList, MenuItem, Button, Progress,
-  useColorModeValue, Spinner, Center, Image, Link
+  useColorModeValue, Spinner, Center, Image, Link,
+  Modal, ModalOverlay, ModalContent, ModalHeader, ModalFooter, ModalBody, ModalCloseButton,
+  FormControl, FormLabel, Input, Textarea, useDisclosure, useToast
 } from '@chakra-ui/react';
 import { ChevronDownIcon, ExternalLinkIcon } from '@chakra-ui/icons';
 import Chart from 'react-apexcharts';
 import api from '../../../utils/axiosConfig';
-import { MdLocationOn, MdDateRange, MdPeople, MdFactory, MdRecycling } from 'react-icons/md';
+import { MdLocationOn, MdDateRange, MdPeople, MdFactory, MdRecycling, MdCompareArrows } from 'react-icons/md';
 
 const Marquee = ({ buyers }) => {
   if (!buyers || buyers.length === 0) return null;
@@ -60,26 +62,39 @@ const safeChartVal = (val) => {
 };
 
 export default function UserCompanyProfile() {
+  const { useLocation, useNavigate } = require('react-router-dom');
+  const location = useLocation();
+  const navigate = useNavigate();
   const [profiles, setProfiles] = useState([]);
-  const [selectedId, setSelectedId] = useState(null);
+  const [selectedId, setSelectedId] = useState(location.state?.companyId || null);
   const [loading, setLoading] = useState(true);
 
   const cardBg = useColorModeValue('white', 'navy.800');
   const textColor = useColorModeValue('secondaryGray.900', 'white');
   const brandGreen = '#048E3D';
   const brandBg = '#e6f4ea';
+  const toast = useToast();
+  const { isOpen, onOpen, onClose } = useDisclosure();
+  const [claimData, setClaimData] = useState({
+    userName: '',
+    userEmail: '',
+    userPhone: '',
+    missingDataInfo: '',
+    missingDataFile: null
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         const res = await api.get('/company-profile');
         if (res.data.success) {
-          // STRICT FILTER: Only Live or Verified
+          // SORT
           const publicProfiles = res.data.data
-            .filter(p => p.dataStatus === 'Live' || p.dataStatus === 'Verified')
             .sort((a, b) => a.basicInfo?.companyName?.localeCompare(b.basicInfo?.companyName));
           setProfiles(publicProfiles);
-          if (publicProfiles.length > 0) {
+          
+          if (!selectedId && publicProfiles.length > 0) {
             setSelectedId(publicProfiles[0]._id);
           }
         }
@@ -92,10 +107,41 @@ export default function UserCompanyProfile() {
     fetchData();
   }, []);
 
-  if (loading) return <Center h="100vh"><Spinner size="xl" color={brandGreen} /></Center>;
-  if (profiles.length === 0) return <Center h="100vh"><Text>No verified company profiles found.</Text></Center>;
-
   const company = profiles.find(p => p._id === selectedId) || profiles[0];
+
+  const submitClaim = async () => {
+    if (!claimData.userName || !claimData.userEmail || !claimData.userPhone) {
+      toast({ title: 'Please fill name, email and phone number', status: 'warning' });
+      return;
+    }
+    
+    setIsSubmitting(true);
+    const formData = new FormData();
+    formData.append('companyId', company?._id);
+    formData.append('companyName', company?.basicInfo?.companyName);
+    formData.append('userName', claimData.userName);
+    formData.append('userEmail', claimData.userEmail);
+    formData.append('userPhone', claimData.userPhone);
+    formData.append('missingDataInfo', claimData.missingDataInfo);
+    if (claimData.missingDataFile) {
+      formData.append('missingDataFile', claimData.missingDataFile);
+    }
+
+    try {
+      await api.post('/company-profile/claim', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      toast({ title: 'Profile Claim Submitted', description: "We will review your request and get back to you.", status: 'success' });
+      onClose();
+    } catch (err) {
+      toast({ title: 'Submission Failed', description: err.response?.data?.message || 'Error', status: 'error' });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  if (loading) return <Center h="100vh"><Spinner size="xl" color={brandGreen} /></Center>;
+  if (profiles.length === 0) return <Center h="100vh"><Text>No company profiles found.</Text></Center>;
 
   const ghgOptions = {
     chart: { type: 'area', toolbar: { show: false }, sparkline: { enabled: true } },
@@ -128,53 +174,33 @@ export default function UserCompanyProfile() {
     <Box pt={{ base: '180px', md: '120px', xl: '120px' }} px="20px">
       <Flex justify="space-between" align="center" mb="20px" direction={{base: 'column', md: 'row'}} gap="15px">
         <Box>
-          <Text fontSize="2xl" fontWeight="bold" color={textColor}>Company Dashboard</Text>
+          <Text fontSize="2xl" fontWeight="bold" color={textColor}>
+            {company?.basicInfo?.companyName || 'Company Profile'}
+          </Text>
           {company.dataSource && company.dataSource.startsWith('http') && (
             <Link href={company.dataSource} isExternal color="blue.500" fontSize="sm" fontWeight="bold">
               View Primary Source <ExternalLinkIcon mx="2px" />
             </Link>
           )}
         </Box>
-        
-        <Menu>
-          <MenuButton 
-            as={Button} 
-            rightIcon={<ChevronDownIcon />} 
-            bg={cardBg} 
-            w={{base: '100%', md: '300px'}} 
-            textAlign="left"
-            boxShadow="sm"
-            _hover={{ bg: useColorModeValue('gray.50', 'whiteAlpha.100') }}
-            _active={{ bg: useColorModeValue('gray.100', 'whiteAlpha.200') }}
+        <Flex gap="10px">
+          <Button
+            onClick={onOpen}
+            colorScheme="teal"
+            variant="solid"
+            size="sm"
           >
-            {company?.basicInfo?.companyName || 'Select Company'}
-          </MenuButton>
-          <MenuList 
-            maxH="300px" 
-            overflowY="auto" 
-            w={{base: '100%', md: '300px'}}
-            boxShadow="lg"
-            bg={cardBg}
-            css={{
-              '&::-webkit-scrollbar': { width: '4px' },
-              '&::-webkit-scrollbar-track': { width: '6px' },
-              '&::-webkit-scrollbar-thumb': { background: '#cbd5e0', borderRadius: '24px' },
-            }}
+            Claim Profile
+          </Button>
+          <Button 
+            onClick={() => navigate('/user/suppliers')}
+            colorScheme="green"
+            variant="outline"
+            size="sm"
           >
-            {profiles.map(p => (
-              <MenuItem 
-                key={p._id} 
-                onClick={() => setSelectedId(p._id)}
-                bg={p._id === selectedId ? useColorModeValue('green.50', 'whiteAlpha.200') : 'transparent'}
-                color={p._id === selectedId ? brandGreen : textColor}
-                fontWeight={p._id === selectedId ? 'bold' : 'normal'}
-                _hover={{ bg: useColorModeValue('gray.50', 'whiteAlpha.100') }}
-              >
-                {p.basicInfo.companyName}
-              </MenuItem>
-            ))}
-          </MenuList>
-        </Menu>
+            Back to Suppliers
+          </Button>
+        </Flex>
       </Flex>
 
       <SimpleGrid columns={{ base: 1, xl: 2 }} spacing="20px" mb="20px">
@@ -372,33 +398,51 @@ export default function UserCompanyProfile() {
                   <AccordionIcon color="gray.400" />
                 </AccordionButton>
               </h2>
-              <AccordionPanel pb={5} pt={5} px={6} color={useColorModeValue('gray.600', 'gray.300')} borderTop="1px solid" borderColor={useColorModeValue('gray.100', 'whiteAlpha.100')} bg={useColorModeValue('white', 'navy.800')}>
-                <SimpleGrid columns={{base: 1, md: 2}} spacing="30px">
-                  <Box>
-                    <Text fontSize="sm" fontWeight="bold" color="gray.500" mb="15px" textTransform="uppercase">{item.title} Impact (per kg)</Text>
+              <AccordionPanel pb={6} pt={6} px={6} color={useColorModeValue('gray.600', 'gray.300')} borderTop="1px solid" borderColor={useColorModeValue('gray.100', 'whiteAlpha.100')} bg={useColorModeValue('white', 'navy.800')}>
+                
+                <Flex mb="25px" p="15px" bg={useColorModeValue('green.50', 'rgba(4, 142, 61, 0.1)')} borderRadius="md" align="center" border="1px solid" borderColor={useColorModeValue('green.200', 'green.800')}>
+                  <Icon as={MdRecycling} color={brandGreen} mr="10px" w="24px" h="24px" />
+                  <Text fontSize="sm" color={useColorModeValue('green.800', 'green.200')} fontWeight="bold">
+                    Benefit Summary: Switching from {item.title} to {item.vs} reduces emissions by approx. 56% and water usage by 91%.
+                  </Text>
+                </Flex>
+
+                <Flex direction={{base: 'column', md: 'row'}} align="center" gap="20px" position="relative">
+                  <Box flex="1" w="100%" p="20px" borderRadius="10px" border="1px dashed" borderColor={useColorModeValue('red.200', 'red.900')} bg={useColorModeValue('red.50', 'rgba(254, 178, 178, 0.05)')}>
+                    <Text fontSize="sm" fontWeight="bold" color="red.500" mb="15px" textTransform="uppercase">Traditional {item.title} (per kg)</Text>
                     
                     <Flex justify="space-between" mb="5px"><Text fontSize="xs" fontWeight="bold">Carbon Footprint</Text><Text fontSize="xs" fontWeight="bold">2.5 kg CO₂e</Text></Flex>
-                    <Progress value={80} size="sm" colorScheme="red" borderRadius="md" mb="15px" bg={useColorModeValue('red.50', 'whiteAlpha.100')} />
+                    <Progress value={80} size="sm" colorScheme="red" borderRadius="md" mb="15px" bg={useColorModeValue('white', 'whiteAlpha.100')} />
 
                     <Flex justify="space-between" mb="5px"><Text fontSize="xs" fontWeight="bold">Water Consumption</Text><Text fontSize="xs" fontWeight="bold">2,100 L</Text></Flex>
-                    <Progress value={90} size="sm" colorScheme="blue" borderRadius="md" bg={useColorModeValue('blue.50', 'whiteAlpha.100')} />
+                    <Progress value={90} size="sm" colorScheme="blue" borderRadius="md" bg={useColorModeValue('white', 'whiteAlpha.100')} />
                   </Box>
 
-                  <Box>
-                    <Text fontSize="sm" fontWeight="bold" color={brandGreen} mb="15px" textTransform="uppercase">{item.vs} Impact (per kg)</Text>
+                  <Center 
+                    bg={useColorModeValue('white', 'navy.700')} 
+                    color="gray.400" 
+                    p="10px" 
+                    borderRadius="full" 
+                    border="1px solid" 
+                    borderColor={useColorModeValue('gray.200', 'whiteAlpha.200')}
+                    position={{md: "absolute"}}
+                    left="50%"
+                    transform={{md: "translateX(-50%)"}}
+                    zIndex={1}
+                    boxShadow="sm"
+                  >
+                    <Icon as={MdCompareArrows} w="24px" h="24px" />
+                  </Center>
+
+                  <Box flex="1" w="100%" p="20px" borderRadius="10px" border="1px dashed" borderColor={useColorModeValue('green.200', 'green.900')} bg={useColorModeValue('green.50', 'rgba(4, 142, 61, 0.05)')}>
+                    <Text fontSize="sm" fontWeight="bold" color={brandGreen} mb="15px" textTransform="uppercase">Sustainable {item.vs} (per kg)</Text>
                     
                     <Flex justify="space-between" mb="5px"><Text fontSize="xs" fontWeight="bold">Carbon Footprint</Text><Text fontSize="xs" fontWeight="bold" color={brandGreen}>1.1 kg CO₂e</Text></Flex>
-                    <Progress value={35} size="sm" colorScheme="green" borderRadius="md" mb="15px" bg={useColorModeValue('green.50', 'whiteAlpha.100')} />
+                    <Progress value={35} size="sm" colorScheme="green" borderRadius="md" mb="15px" bg={useColorModeValue('white', 'whiteAlpha.100')} />
 
                     <Flex justify="space-between" mb="5px"><Text fontSize="xs" fontWeight="bold">Water Consumption</Text><Text fontSize="xs" fontWeight="bold" color="teal.500">180 L</Text></Flex>
-                    <Progress value={15} size="sm" colorScheme="teal" borderRadius="md" bg={useColorModeValue('teal.50', 'whiteAlpha.100')} />
+                    <Progress value={15} size="sm" colorScheme="teal" borderRadius="md" bg={useColorModeValue('white', 'whiteAlpha.100')} />
                   </Box>
-                </SimpleGrid>
-                <Flex mt="20px" p="15px" bg={useColorModeValue('green.50', 'rgba(4, 142, 61, 0.1)')} borderRadius="md" align="center" border="1px solid" borderColor={useColorModeValue('green.100', 'transparent')}>
-                  <Icon as={MdRecycling} color={brandGreen} mr="10px" w="20px" h="20px" />
-                  <Text fontSize="sm" color={useColorModeValue('green.800', 'green.200')} fontWeight="bold">
-                    Switching to {item.vs} reduces emissions by approx. 56% and water usage by 91%.
-                  </Text>
                 </Flex>
               </AccordionPanel>
             </AccordionItem>
@@ -406,6 +450,49 @@ export default function UserCompanyProfile() {
         </Accordion>
       </Box>
       
+      {/* Claim Profile Modal */}
+      <Modal isOpen={isOpen} onClose={onClose} isCentered>
+        <ModalOverlay backdropFilter="blur(4px)" />
+        <ModalContent borderRadius="15px">
+          <ModalHeader>Claim Profile - {company?.basicInfo?.companyName}</ModalHeader>
+          <ModalCloseButton />
+          <ModalBody>
+            <Text fontSize="sm" color="gray.500" mb={4}>
+              Provide your details and any missing information. We will verify and update your company's profile.
+            </Text>
+            
+            <FormControl isRequired mb={3}>
+              <FormLabel>Name</FormLabel>
+              <Input placeholder="Enter your name" value={claimData.userName} onChange={(e) => setClaimData({...claimData, userName: e.target.value})} />
+            </FormControl>
+
+            <FormControl isRequired mb={3}>
+              <FormLabel>Email</FormLabel>
+              <Input type="email" placeholder="Enter your official email" value={claimData.userEmail} onChange={(e) => setClaimData({...claimData, userEmail: e.target.value})} />
+            </FormControl>
+
+            <FormControl isRequired mb={3}>
+              <FormLabel>Phone Number</FormLabel>
+              <Input placeholder="Enter your phone number" value={claimData.userPhone} onChange={(e) => setClaimData({...claimData, userPhone: e.target.value})} />
+            </FormControl>
+
+            <FormControl mb={3}>
+              <FormLabel>What data is missing or incorrect?</FormLabel>
+              <Textarea placeholder="Describe the missing data..." value={claimData.missingDataInfo} onChange={(e) => setClaimData({...claimData, missingDataInfo: e.target.value})} />
+            </FormControl>
+
+            <FormControl mb={3}>
+              <FormLabel>Upload Supporting File (Optional)</FormLabel>
+              <Input type="file" p={1} onChange={(e) => setClaimData({...claimData, missingDataFile: e.target.files[0]})} />
+            </FormControl>
+          </ModalBody>
+          <ModalFooter>
+            <Button variant="ghost" mr={3} onClick={onClose}>Cancel</Button>
+            <Button colorScheme="green" onClick={submitClaim} isLoading={isSubmitting}>Submit</Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+
     </Box>
   );
 }

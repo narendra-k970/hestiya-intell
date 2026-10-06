@@ -28,6 +28,7 @@ import CompanyProfileUpload from 'views/admin/companyProfile';
 import UserCompanyProfile from 'views/user/companyProfile';
 import SupplyHubExplorer from 'views/user/supplyHub';
 import ClimateProfileOverview from 'views/user/climateProfile';
+import SupplierList from 'views/user/suppliers';
 const brandGreen = '#19944D';
 
 const routes = [
@@ -79,6 +80,15 @@ const routes = [
     path: '/climate-profile',
     icon: <Icon as={MdBusinessCenter} width="20px" height="20px" color={brandGreen} />,
     component: <ClimateProfileOverview />,
+    roles: ['user', 'admin'],
+  },
+  {
+    name: 'Suppliers',
+    sidebar: false,
+    layout: '/user',
+    path: '/suppliers',
+    icon: <Icon as={MdBusinessCenter} width="20px" height="20px" color={brandGreen} />,
+    component: <SupplierList />,
     roles: ['user', 'admin'],
   },
   {
