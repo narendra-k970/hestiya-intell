@@ -17,6 +17,7 @@ export default function SupplierList() {
 
   const [brands, setBrands] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const { isOpen, onOpen, onClose } = useDisclosure();
   const [selectedCompany, setSelectedCompany] = useState(null);
@@ -90,6 +91,8 @@ export default function SupplierList() {
     }
   };
 
+  const filteredBrands = brands.filter(b => b.basicInfo?.companyName?.toLowerCase().includes((searchQuery || "").toLowerCase()));
+
   if (loading) {
     return (
       <Center h="100vh" pt="80px">
@@ -100,7 +103,8 @@ export default function SupplierList() {
 
   return (
     <Box pt={{ base: '130px', md: '80px', xl: '80px' }}>
-      <Flex align="center" mb="30px">
+      <Flex align="center" justify="space-between" mb="30px" flexWrap="wrap" gap="20px">
+        <Flex align="center">
         <IconButton 
           icon={<Icon as={MdArrowBack} boxSize={5} />} 
           onClick={() => navigate('/user/climate-profile')}
@@ -112,9 +116,27 @@ export default function SupplierList() {
           <Text fontSize="2xl" fontWeight="bold" color={textColor}>H&M Group Suppliers</Text>
           <Text fontSize="sm" color="gray.500" mt="2px">Select a supplier to view their climate dashboard.</Text>
         </Box>
+        </Flex>
+        <Box w={{ base: "100%", md: "300px" }}>
+          <FormControl>
+            <Input 
+              list="companies-list" 
+              placeholder="Search companies..." 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              bg={cardBg}
+              borderRadius="10px"
+            />
+            <datalist id="companies-list">
+              {brands.map(brand => (
+                <option key={brand._id} value={brand.basicInfo?.companyName} />
+              ))}
+            </datalist>
+          </FormControl>
+        </Box>
       </Flex>
 
-      {brands.length === 0 ? (
+      {filteredBrands.length === 0 ? (
         <Center h="50vh"><Text>No company profiles found.</Text></Center>
       ) : (
         <SimpleGrid columns={{ base: 1, md: 3, lg: 4, xl: 5 }} spacing="15px">
@@ -233,3 +255,5 @@ export default function SupplierList() {
     </Box>
   );
 }
+
+
