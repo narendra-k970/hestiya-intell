@@ -1,9 +1,42 @@
-import React from 'react';
-import { Box, SimpleGrid, Text, useColorModeValue, Flex, Image, Button } from '@chakra-ui/react';
+import React, { useState, useEffect } from 'react';
+import { Box, SimpleGrid, Text, useColorModeValue, Flex, Image, Button, Badge } from '@chakra-ui/react';
 import { useNavigate } from 'react-router-dom';
+import api from '../../../utils/axiosConfig';
 
 export default function ClimateProfileOverview() {
   const navigate = useNavigate();
+  const [avgEsg, setAvgEsg] = useState(null);
+
+  useEffect(() => {
+    const fetchCompaniesAndCalculateEsg = async () => {
+      try {
+        const res = await api.get('/company-profile');
+        if (res.data.success && res.data.data) {
+          const companies = res.data.data;
+          
+          let totalEsg = 0;
+          let count = 0;
+          
+          companies.forEach(company => {
+            const score = company.scores?.esgScore;
+            // Sirf wahi score lo jo "Not Disclosed" ya "N/A" na ho, balki ek valid number ho
+            if (score && score !== 'Not Disclosed' && score !== 'N/A' && !isNaN(Number(score))) {
+              totalEsg += Number(score);
+              count++;
+            }
+          });
+          
+          if (count > 0) {
+            setAvgEsg((totalEsg / count).toFixed(1)); // 1 decimal point tak average
+          }
+        }
+      } catch (err) {
+        console.error("Failed to fetch ESG data", err);
+      }
+    };
+    
+    fetchCompaniesAndCalculateEsg();
+  }, []);
   const textColor = useColorModeValue('secondaryGray.900', 'white');
   const cardBg = useColorModeValue('white', 'navy.800');
   const border = useColorModeValue('gray.200', 'whiteAlpha.200');
@@ -35,9 +68,24 @@ export default function ClimateProfileOverview() {
             border="1px solid" 
             borderColor={border}
             boxShadow="sm"
+            position="relative"
             transition="transform 0.2s, box-shadow 0.2s"
             _hover={{ transform: 'translateY(-5px)', boxShadow: 'md' }}
           >
+            {avgEsg && (
+              <Badge 
+                colorScheme="blue" 
+                position="absolute" 
+                top="10px" 
+                left="10px"
+                fontSize="11px"
+                px="2"
+                py="1"
+                borderRadius="md"
+              >
+                ESG: {avgEsg}
+              </Badge>
+            )}
             <Flex justify="center" align="center" h="100px" mb="20px" bg="white" borderRadius="10px" p="10px" border="1px solid" borderColor="gray.100">
               <Image src={brand.logo} alt={brand.name} maxH="100%" maxW="100%" objectFit="contain" />
             </Flex>
@@ -58,3 +106,5 @@ export default function ClimateProfileOverview() {
     </Box>
   );
 }
+
+
