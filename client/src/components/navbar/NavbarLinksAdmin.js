@@ -55,7 +55,7 @@ export default function HeaderLinks(props) {
   const handleLogout = () => {
     localStorage.clear();
     sessionStorage.clear();
-    navigate('/auth/sign-in');
+    navigate('/');
     window.location.reload();
   };
 

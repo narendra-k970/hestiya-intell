@@ -289,15 +289,18 @@ exports.login = async (req, res) => {
       return res.status(403).json({ message: "Your account has been deactivated." });
     }
 
-    // 2. KYC Check
+    // 2. KYC Check (Temporarily disabled)
+    /*
     if (user.role !== "admin" && !user.isKycCompleted) {
       return res.status(403).json({
         message: "Please complete your KYC first.",
         isKycPending: true,
       });
     }
+    */
 
-    // 3. Approval Check
+    // 3. Approval Check (Temporarily disabled)
+    /*
     if (user.role !== "admin") {
       if (user.approvalStatus === "pending") {
         return res.status(403).json({
@@ -312,8 +315,9 @@ exports.login = async (req, res) => {
         });
       }
     }
+    */
 
-    // 3. Password Match
+    // 4. Password Match
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       return res.status(401).json({ message: "Invalid email or password" });
@@ -781,3 +785,4 @@ exports.getBookmarks = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+

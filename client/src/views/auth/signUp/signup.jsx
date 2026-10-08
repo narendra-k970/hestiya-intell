@@ -133,6 +133,16 @@ const AuthForm = () => {
     try {
       // 4. Updated to use 'api' and short endpoint
       await api.post('/user/complete-signup', formData);
+      
+      // Google Ads Conversion Tracking for Signup
+      if (typeof window !== 'undefined' && window.gtag) {
+        window.gtag('event', 'conversion', {
+          'send_to': 'AW-17419915561/V7FGCNzYlpUdEKmiu_JA',
+          'value': 1.0,
+          'currency': 'INR'
+        });
+      }
+
       toast({
         title: 'Account Created!',
         description: 'Redirecting to login...',
@@ -141,7 +151,7 @@ const AuthForm = () => {
       });
 
       setTimeout(() => {
-        navigate('/auth/sign-in');
+        navigate('/');
       }, 2000);
     } catch (err) {
       toast({
@@ -451,3 +461,5 @@ const AuthForm = () => {
 };
 
 export default AuthForm;
+
+

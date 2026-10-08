@@ -283,7 +283,7 @@ export default function UserProfile() {
       toast({ title: 'Account Deactivated', description: 'You have been logged out safely.', status: 'info', duration: 4000 });
       localStorage.removeItem('token');
       localStorage.removeItem('user');
-      window.location.href = '/auth/sign-in';
+      window.location.href = '/';
     } catch (err) {
       toast({ title: 'Deactivation Failed', description: err.response?.data?.message || 'Something went wrong', status: 'error' });
     } finally {

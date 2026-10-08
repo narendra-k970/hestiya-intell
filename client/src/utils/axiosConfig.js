@@ -80,7 +80,7 @@ axiosInstance.interceptors.response.use(
           localStorage.removeItem('refreshToken');
           localStorage.removeItem('user');
           if (!window.location.pathname.includes('/auth/sign-in')) {
-            window.location.href = '/auth/sign-in';
+            window.location.href = '/';
           }
           return Promise.reject(err);
         } finally {
@@ -90,7 +90,7 @@ axiosInstance.interceptors.response.use(
         localStorage.removeItem('token');
         localStorage.removeItem('user');
         if (!window.location.pathname.includes('/auth/sign-in')) {
-          window.location.href = '/auth/sign-in';
+          window.location.href = '/';
         }
       }
     }

@@ -91,7 +91,7 @@ function SignUp() {
 
       // 4. Redirect to Sign In after 2 seconds
       setTimeout(() => {
-        navigate('/auth/sign-in');
+        navigate('/');
       }, 2000);
     } catch (error) {
       // 5. Error Handling

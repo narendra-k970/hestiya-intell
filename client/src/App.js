@@ -95,7 +95,7 @@ export default function Main() {
                 <Navigate to="/user/default" replace />
               )
             ) : (
-              <Navigate to="/auth/sign-in" replace />
+              <AuthLayout theme={currentTheme} setTheme={setCurrentTheme} />
             )
           }
         />
