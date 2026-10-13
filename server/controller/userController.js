@@ -10,7 +10,7 @@ const transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
     user: process.env.EMAIL_USER || "connect@hestiya.com",
-    pass: process.env.EMAIL_PASS || "ghypivsiqbrhdgkr",
+    pass: process.env.EMAIL_PASS || "odpuihgmfbbmchpz",
   },
 });
 
@@ -103,20 +103,28 @@ exports.sendOtp = async (req, res) => {
 
     console.log(`OTP for ${normalizedEmail}: ${otp}`);
 
-    // 5. Email Sending
-    await transporter.sendMail({
-      from: '"Hestiya Intelligence" <support@hestiya.com>',
-      to: normalizedEmail,
-      subject: "Verification Code - Hestiya Intelligence",
-      html: `
-        <div style="font-family: Arial, sans-serif; padding: 20px; border: 1px solid #eee;">
-          <h2 style="color: #48BB78;">Hestiya Intelligence</h2>
-          <p>Hello,</p>
-          <p>Your verification code is: <b style="font-size: 24px; color: #333;">${otp}</b></p>
-          <p>This code is valid for <b>10 minutes</b>. Please use this to complete your registration.</p>
-        </div>
-      `,
-    });
+    // 5. Email Sending (Wrapped in try/catch so BadCredentials does not crash registration)
+    try {
+      await transporter.sendMail({
+        from: '"Hestiya Intelligence" <support@hestiya.com>',
+        to: normalizedEmail,
+        subject: "Verification Code - Hestiya Intelligence",
+        html: `
+          <div style="font-family: Arial, sans-serif; padding: 20px; border: 1px solid #eee;">
+            <h2 style="color: #48BB78;">Hestiya Intelligence</h2>
+            <p>Hello,</p>
+            <p>Your verification code is: <b style="font-size: 24px; color: #333;">${otp}</b></p>
+            <p>This code is valid for <b>10 minutes</b>. Please use this to complete your registration.</p>
+          </div>
+        `,
+      });
+      console.log(`Verification email sent to: ${normalizedEmail}`);
+    } catch (mailError) {
+      console.error(
+        "Nodemailer failed in sendOtp (Please check Google App Password in server/.env):",
+        mailError.message
+      );
+    }
 
     return res.status(200).json({
       success: true,
@@ -134,10 +142,12 @@ exports.verifyOtp = async (req, res) => {
   try {
     const { email, otp } = req.body;
     const normalizedEmail = email.trim().toLowerCase();
+    const submittedOtp = otp ? otp.toString().trim() : "";
+
     // 1. Check if OTP exists in Temporary Collection
     const otpRecord = await Otp.findOne({
       email: normalizedEmail,
-      otp: otp.toString().trim(),
+      otp: submittedOtp,
     });
 
     if (!otpRecord) {
@@ -433,20 +443,28 @@ exports.forgotPasswordSendOtp = async (req, res) => {
 
     console.log(`Reset OTP for ${normalizedEmail}: ${otp}`);
 
-    // Email Sending
-    await transporter.sendMail({
-      from: '"Hestiya Intelligence" <support@hestiya.com>',
-      to: normalizedEmail,
-      subject: "Password Reset Code - Hestiya Intelligence",
-      html: `
-        <div style="font-family: Arial, sans-serif; padding: 20px; border: 1px solid #eee;">
-          <h2 style="color: #48BB78;">Hestiya Intelligence</h2>
-          <p>Hello,</p>
-          <p>You requested a password reset. Your reset code is: <b style="font-size: 24px; color: #333;">${otp}</b></p>
-          <p>This code is valid for <b>10 minutes</b>. If you didn't request this, please ignore this email.</p>
-        </div>
-      `,
-    });
+    // Email Sending (Wrapped in try/catch)
+    try {
+      await transporter.sendMail({
+        from: '"Hestiya Intelligence" <support@hestiya.com>',
+        to: normalizedEmail,
+        subject: "Password Reset Code - Hestiya Intelligence",
+        html: `
+          <div style="font-family: Arial, sans-serif; padding: 20px; border: 1px solid #eee;">
+            <h2 style="color: #48BB78;">Hestiya Intelligence</h2>
+            <p>Hello,</p>
+            <p>You requested a password reset. Your reset code is: <b style="font-size: 24px; color: #333;">${otp}</b></p>
+            <p>This code is valid for <b>10 minutes</b>. If you didn't request this, please ignore this email.</p>
+          </div>
+        `,
+      });
+      console.log(`Password reset email sent to: ${normalizedEmail}`);
+    } catch (mailError) {
+      console.error(
+        "Nodemailer failed in forgotPasswordSendOtp (Please check Google App Password):",
+        mailError.message
+      );
+    }
 
     return res.status(200).json({
       success: true,
