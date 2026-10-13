@@ -217,6 +217,16 @@ exports.completeKycAndSignup = async (req, res) => {
       }
     }
 
+    // Phone Number validation (Must have country code and 7-15 digits)
+    if (kycData.phoneNumber) {
+      const digitsOnly = kycData.phoneNumber.replace(/\D/g, "");
+      if (digitsOnly.length < 7 || digitsOnly.length > 15) {
+        return res.status(400).json({
+          message: "Please enter a valid phone number with country code.",
+        });
+      }
+    }
+
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
@@ -226,6 +236,7 @@ exports.completeKycAndSignup = async (req, res) => {
         ...kycData,
         password: hashedPassword,
         isKycCompleted: true,
+        approvalStatus: "approved",
       },
       { new: true },
     );
@@ -235,19 +246,19 @@ exports.completeKycAndSignup = async (req, res) => {
       await transporter.sendMail({
         from: '"Hestiya Intelligence" <support@hestiya.com>',
         to: normalizedEmail,
-        subject: "Application Received - Hestiya Intelligence",
+        subject: "Welcome to Hestiya Intelligence - Account Approved",
         html: `
           <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: auto; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden;">
-            <div style="background-color: #4A5568; padding: 30px; text-align: center;">
-              <h1 style="color: white; margin: 0; font-size: 24px;">Application Received</h1>
+            <div style="background-color: #028B3E; padding: 30px; text-align: center;">
+              <h1 style="color: white; margin: 0; font-size: 24px;">Welcome to Hestiya Intelligence</h1>
             </div>
             <div style="padding: 30px; color: #2d3748; line-height: 1.6;">
               <p style="font-size: 18px;">Hello <b>${updatedUser.firstName || "Partner"}</b>,</p>
-              <p>Thank you for registering with <b>Hestiya Intelligence</b>. Your application has been successfully received and is currently under review by our team.</p>
-              <p>Once your account is approved, you will receive a confirmation email and will be able to access the Hestiya Market Intelligence dashboard.</p>
+              <p>Thank you for registering with <b>Hestiya Intelligence</b>. Your account has been successfully approved.</p>
+              <p>You can now log in and access the Hestiya Market Intelligence dashboard.</p>
               
-              <div style="background-color: #f7fafc; padding: 20px; border-radius: 8px; margin: 20px 0; border: 1px solid #edf2f7;">
-                <p style="margin: 0; color: #4a5568;"><b>Status:</b> Pending Review</p>
+              <div style="background-color: #f0fff4; padding: 20px; border-radius: 8px; margin: 20px 0; border: 1px solid #c6f6d5;">
+                <p style="margin: 0; color: #2f855a; font-weight: bold;">Status: Approved</p>
               </div>
 
               <p style="font-size: 14px; color: #718096; margin-top: 40px; border-top: 1px solid #edf2f7; padding-top: 20px;">
@@ -258,7 +269,7 @@ exports.completeKycAndSignup = async (req, res) => {
           </div>
         `,
       });
-      console.log(`Application received email sent to: ${normalizedEmail}`);
+      console.log(`Welcome approved email sent to: ${normalizedEmail}`);
     } catch (mailErr) {
       console.error("Application Email Sending Failed:", mailErr);
     }
@@ -266,8 +277,7 @@ exports.completeKycAndSignup = async (req, res) => {
 
     res.json({
       success: true,
-      message:
-        "Registration successful! Your account is pending admin approval.",
+      message: "Registration successful! You can now log in to your account.",
       user: {
         email: updatedUser.email,
         firstName: updatedUser.firstName,

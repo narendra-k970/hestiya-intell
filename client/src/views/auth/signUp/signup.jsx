@@ -19,10 +19,18 @@ import {
   Progress,
   HStack,
   Link,
+  Popover,
+  PopoverTrigger,
+  PopoverContent,
+  PopoverBody,
+  useDisclosure,
+  Icon,
+  Flex,
 } from '@chakra-ui/react';
+import { MdArrowDropDown, MdSearch } from 'react-icons/md';
 import api from '../../../utils/axiosConfig';
 import { useNavigate } from 'react-router-dom';
-import { industries, companySizes, genders, countries } from './constant';
+import { industries, companySizes, genders, countries, countryDialCodes } from './constant';
 import logo from 'assets/img/final-logo.webp';
 import carbonBG from 'assets/img/carbon_market_bg.png';
 
@@ -32,8 +40,19 @@ const AuthForm = () => {
   }, []);
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [selectedCountry, setSelectedCountry] = useState(
+    countryDialCodes.find((c) => c.code === '+91') || countryDialCodes[0]
+  );
+  const [countrySearch, setCountrySearch] = useState('');
+  const [rawPhoneNumber, setRawPhoneNumber] = useState('');
+  const { isOpen: isPickerOpen, onOpen: onPickerOpen, onClose: onPickerClose } = useDisclosure();
   const toast = useToast();
   const navigate = useNavigate();
+
+  const filteredCountries = countryDialCodes.filter((c) =>
+    c.country.toLowerCase().includes(countrySearch.toLowerCase()) ||
+    c.code.includes(countrySearch)
+  );
 
   const brandGreen = '#028B3E';
   const cardBg = useColorModeValue('white', 'navy.800');
@@ -129,10 +148,27 @@ const AuthForm = () => {
       return;
     }
 
+    // Phone Number Validation (Strictly 10 digits)
+    const cleanPhone = rawPhoneNumber.replace(/\D/g, '');
+    if (!cleanPhone || cleanPhone.length !== 10) {
+      toast({
+        title: 'Invalid Phone Number',
+        description: 'Please enter a valid 10-digit mobile number.',
+        status: 'warning',
+        duration: 5000,
+      });
+      return;
+    }
+
+    const fullPhoneNumber = `${selectedCountry.code} ${cleanPhone}`;
+
     setLoading(true);
     try {
       // 4. Updated to use 'api' and short endpoint
-      await api.post('/user/complete-signup', formData);
+      await api.post('/user/complete-signup', {
+        ...formData,
+        phoneNumber: fullPhoneNumber,
+      });
       
       // Google Ads Conversion Tracking for Signup
       if (typeof window !== 'undefined' && window.gtag) {
@@ -334,12 +370,126 @@ const AuthForm = () => {
                   </Box>
                 </FormControl>
 
-                <Input
-                  name="phoneNumber"
-                  placeholder="Phone Number (with country code)"
-                  borderRadius="16px"
-                  onChange={handleChange}
-                />
+                <FormControl isRequired>
+                  <HStack spacing={2} w="full" align="center">
+                    <Popover
+                      isOpen={isPickerOpen}
+                      onOpen={onPickerOpen}
+                      onClose={onPickerClose}
+                      placement="bottom-start"
+                      isLazy
+                    >
+                      <PopoverTrigger>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          borderRadius="16px"
+                          minW={{ base: '110px', md: '125px' }}
+                          h="40px"
+                          px={3}
+                          bg="white"
+                          borderColor="gray.200"
+                          _hover={{ borderColor: brandGreen }}
+                        >
+                          <HStack spacing={1}>
+                            <Text fontSize="base">{selectedCountry.flag}</Text>
+                            <Text fontSize="sm" fontWeight="bold" color="gray.800">
+                              {selectedCountry.code}
+                            </Text>
+                            <Icon as={MdArrowDropDown} color="gray.500" />
+                          </HStack>
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent
+                        w="280px"
+                        borderRadius="16px"
+                        boxShadow="2xl"
+                        bg="white"
+                        borderColor="gray.200"
+                        zIndex={9999}
+                      >
+                        <PopoverBody p={3}>
+                          <HStack mb={2} px={1}>
+                            <Icon as={MdSearch} color="gray.400" />
+                            <Input
+                              size="sm"
+                              variant="unstyled"
+                              placeholder="Search country or code..."
+                              value={countrySearch}
+                              onChange={(e) => setCountrySearch(e.target.value)}
+                              autoFocus
+                            />
+                          </HStack>
+                          <Divider mb={2} />
+                          <Box
+                            maxH="220px"
+                            overflowY="auto"
+                            css={{
+                              '&::-webkit-scrollbar': { width: '4px' },
+                              '&::-webkit-scrollbar-thumb': {
+                                background: '#028B3E',
+                                borderRadius: '4px',
+                              },
+                            }}
+                          >
+                            {filteredCountries.map((c) => (
+                              <Flex
+                                key={c.country + c.code}
+                                align="center"
+                                justify="space-between"
+                                p={2}
+                                borderRadius="8px"
+                                cursor="pointer"
+                                _hover={{ bg: 'green.50' }}
+                                onClick={() => {
+                                  setSelectedCountry(c);
+                                  setCountrySearch('');
+                                  onPickerClose();
+                                }}
+                              >
+                                <HStack spacing={2}>
+                                  <Text>{c.flag}</Text>
+                                  <Text
+                                    fontSize="xs"
+                                    fontWeight="500"
+                                    color="gray.800"
+                                    noOfLines={1}
+                                    maxW="145px"
+                                  >
+                                    {c.country}
+                                  </Text>
+                                </HStack>
+                                <Text fontSize="xs" fontWeight="bold" color={brandGreen}>
+                                  {c.code}
+                                </Text>
+                              </Flex>
+                            ))}
+                            {filteredCountries.length === 0 && (
+                              <Text fontSize="xs" color="gray.400" textAlign="center" py={4}>
+                                No countries found
+                              </Text>
+                            )}
+                          </Box>
+                        </PopoverBody>
+                      </PopoverContent>
+                    </Popover>
+
+                    <Input
+                      flex="1"
+                      name="rawPhoneNumber"
+                      type="tel"
+                      placeholder="10-digit Phone Number"
+                      borderRadius="16px"
+                      value={rawPhoneNumber}
+                      onChange={(e) => {
+                        const digits = e.target.value.replace(/\D/g, '').slice(0, 10);
+                        setRawPhoneNumber(digits);
+                      }}
+                      maxLength={10}
+                      isRequired
+                    />
+                  </HStack>
+                </FormControl>
 
                 <Select
                   name="gender"

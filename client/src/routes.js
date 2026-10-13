@@ -81,6 +81,7 @@ const routes = [
     icon: <Icon as={MdBusinessCenter} width="20px" height="20px" color={brandGreen} />,
     component: <ClimateProfileOverview />,
     roles: ['user', 'admin'],
+    requiredEmail: ['techsupport@hestiya.com', 'support@hestiya.com'],
   },
   {
     name: 'Suppliers',
@@ -90,6 +91,7 @@ const routes = [
     icon: <Icon as={MdBusinessCenter} width="20px" height="20px" color={brandGreen} />,
     component: <SupplierList />,
     roles: ['user', 'admin'],
+    requiredEmail: ['techsupport@hestiya.com', 'support@hestiya.com'],
   },
   {
     name: 'Company Profile Details',
@@ -99,6 +101,7 @@ const routes = [
     icon: <Icon as={MdBusinessCenter} width="20px" height="20px" color={brandGreen} />,
     component: <UserCompanyProfile />,
     roles: ['user', 'admin'],
+    requiredEmail: ['techsupport@hestiya.com', 'support@hestiya.com'],
   },
   {
     name: 'Supply Hub Explorer',
@@ -107,7 +110,8 @@ const routes = [
     path: '/supply-hub',
     icon: <Icon as={MdMap} width="20px" height="20px" color={brandGreen} />,
     component: <SupplyHubExplorer />,
-    roles: ['user'], // Sirf user ko dikhe, ya admin ko bhi? User ne kaha "sirf ussi user ko dikhe" (meaning user view, not admin view)
+    roles: ['user'],
+    requiredEmail: ['techsupport@hestiya.com', 'support@hestiya.com'],
   },
   // 3. I-RECS (Dropdown Group)
   {

@@ -78,9 +78,11 @@ export function SidebarLinks(props) {
         : true;
         
       const parsedUser = userData ? JSON.parse(userData) : null;
-      const userEmail = parsedUser?.email || '';
+      const userEmail = (parsedUser?.email || '').toLowerCase();
       const isEmailAllowed = route.requiredEmail
-        ? route.requiredEmail.toLowerCase() === userEmail.toLowerCase()
+        ? Array.isArray(route.requiredEmail)
+          ? route.requiredEmail.map((e) => e.toLowerCase()).includes(userEmail)
+          : route.requiredEmail.toLowerCase() === userEmail
         : true;
 
       if (!isRoleAllowed || !isEmailAllowed) return null;

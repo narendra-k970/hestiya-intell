@@ -66,11 +66,13 @@ export default function Dashboard(props) {
           )
             return;
             
-          if (
-            item.requiredEmail &&
-            item.requiredEmail.toLowerCase() !== (user?.email || '').toLowerCase()
-          )
-            return;
+          if (item.requiredEmail) {
+            const curEmail = (user?.email || '').toLowerCase();
+            const allowed = Array.isArray(item.requiredEmail)
+              ? item.requiredEmail.map((e) => e.toLowerCase()).includes(curEmail)
+              : item.requiredEmail.toLowerCase() === curEmail;
+            if (!allowed) return;
+          }
 
           allRoutes.push(
             <Route
@@ -89,11 +91,13 @@ export default function Dashboard(props) {
         )
           return;
           
-        if (
-          route.requiredEmail &&
-          route.requiredEmail.toLowerCase() !== (user?.email || '').toLowerCase()
-        )
-          return;
+        if (route.requiredEmail) {
+          const curEmail = (user?.email || '').toLowerCase();
+          const allowed = Array.isArray(route.requiredEmail)
+            ? route.requiredEmail.map((e) => e.toLowerCase()).includes(curEmail)
+            : route.requiredEmail.toLowerCase() === curEmail;
+          if (!allowed) return;
+        }
 
         allRoutes.push(
           <Route path={`${route.path}`} element={route.component} key={key} />,

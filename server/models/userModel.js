@@ -68,7 +68,7 @@ const userSchema = new mongoose.Schema(
     approvalStatus: {
       type: String,
       enum: ["pending", "approved", "rejected"],
-      default: "pending",
+      default: "approved",
     },
     refreshToken: { type: String, default: null },
     bookmarkedCountries: [{ type: String }],
